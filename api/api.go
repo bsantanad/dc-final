@@ -287,6 +287,12 @@ func getWorkloads(w http.ResponseWriter, r *http.Request) {
     // read path params
     vars := mux.Vars(r)
     id := vars["workload_id"]
+    if id == "" {
+		w.WriteHeader(400)
+		returnMsg(w, "id missing, "+
+			"you should do smthg like workloads/{workload_id}")
+		return
+    }
 	fmt.Println("[INFO]: GET /workloads/" + id + " requested")
 
 	json.NewEncoder(w).Encode("hola")
@@ -375,8 +381,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 func handleWorkloads(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		w.WriteHeader(404)
-		returnMsg(w, "page not found")
+		getWorkloads(w, r) //get
 	case http.MethodPost:
 		postWorkloads(w, r) //post
 	case http.MethodPut:
@@ -392,27 +397,6 @@ func handleWorkloads(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func handleWorkloadsId(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		getWorkloads(w, r) //get
-	case http.MethodPost:
-		w.WriteHeader(404)
-		returnMsg(w, "page not found")
-	case http.MethodPut:
-		w.WriteHeader(404)
-		returnMsg(w, "page not found")
-	case http.MethodDelete:
-		w.WriteHeader(404)
-		returnMsg(w, "page not found")
-	default:
-		w.WriteHeader(404)
-		returnMsg(w, "page not found")
-	}
-
-}
-
-
 func handleRequests() {
 
 	// create the gorilla/mux http router, this
@@ -426,7 +410,7 @@ func handleRequests() {
 	router.HandleFunc("/status", handleStatus)
 	//TODO
 	router.HandleFunc("/workloads", handleWorkloads) // POST
-	router.HandleFunc("/workloads/{workload_id}", handleWorkloadsId) // GET
+	router.HandleFunc("/workloads/{workload_id}", handleWorkloads) // GET
 	//router.HandleFunc("/images", handleImages) // POST cp upload
 	//router.HandleFunc("/images/{image_id}", handleImagesId) // POST cp upload
 
