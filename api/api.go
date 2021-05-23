@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -44,8 +45,9 @@ type User struct {
 }
 
 type Status struct {
-	Message string `json:"message"`
-	Time    string `json:"time"`
+	SystemName string `json:"system_name"`
+	ServerTime string `json:"server_time"`
+	//Workloads array workloads `json:"active_workloads"`
 }
 
 type ImageMsg struct {
@@ -250,6 +252,7 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[INFO]: GET /images/" + id + " requested")
 
 	//FIXME real info
+	// download images
 	json.NewEncoder(w).Encode("hola")
 
 }
@@ -268,7 +271,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
-	_, user, exists := searchToken(token)
+	_, _, exists := searchToken(token)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+
@@ -277,9 +280,19 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var status Status
+	hostname, err := os.Hostname()
+	if err != nil {
+		w.WriteHeader(500)
+		returnMsg(w, "internal server error"+
+			"couldn't get server name")
+		return
+	}
+
 	status = Status{
-		Message: "Hi " + user.Username + ", the DPIP System is Up and Running",
-		Time:    user.Time,
+		SystemName: hostname,
+		ServerTime: time.Now().String(),
+		//FIXME
+		//Workloads : array,
 	}
 
 	json.NewEncoder(w).Encode(status)
