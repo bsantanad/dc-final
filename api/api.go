@@ -21,10 +21,19 @@ type LoginResponse struct {
 	Token   string `json:"token"`
 }
 
+/*
 type Image struct {
 	Name string `json:"name"`
 	Size int    `json:"size"`
 	Data []byte `json:"data"`
+}
+*/
+
+type Image struct {
+	WorkloadId string `json:"workload_id"`
+	ImageId    string `json:"image_id"`
+	Type       string `json:"type"`
+	Data       []byte `json:"data"`
 }
 
 type User struct {
@@ -40,9 +49,10 @@ type Status struct {
 }
 
 type ImageMsg struct {
-	Message  string `json:"message"`
-	Filename string `json:"filename"`
-	Size     string `json:"size"`
+	Message    string `json:"message"`
+	WorkloadId string `json:"workload_id"`
+	ImageId    string `json:"image_id"`
+	Type       string `json:"type"`
 }
 
 type Message struct {
@@ -61,6 +71,10 @@ type Workload struct {
 	Status         string `json:"status"`
 	RunningJobs    int    `json:"running_jobs"`
 	FilteredImages string `json:"filtered_images"`
+}
+
+type ImageReq struct {
+	WorkloadId string `json:"workload_id"`
 }
 
 var Users []User /* this will act as our DB */
@@ -133,15 +147,15 @@ func delLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 // based on https://stackoverflow.com/a/40699578
-// postUpload, upload a file (image).
+// postImages, upload a file (image).
 // It first checks the headers and find the token,
 // validates it and finds the user.
 // Then creates a buffer, copy the bytes of the image
 // to it and fills the Image struct.
 // Finally it append the image to the Image slice
 // the user has.
-func postUpload(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("[INFO]: POST /upload requested")
+func postImages(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("[INFO]: POST /images requested")
 	tmp := r.Header.Get("Authorization")
 	if strings.Fields(tmp)[0] != "Bearer" {
 		w.WriteHeader(400)
@@ -161,19 +175,21 @@ func postUpload(w http.ResponseWriter, r *http.Request) {
 	// uploading the file part
 	r.ParseMultipartForm(32 << 20) // limit your max input length!
 	var buf bytes.Buffer
-	file, header, err := r.FormFile("data")
+	file, _, err := r.FormFile("data")
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	defer file.Close()
-	name := strings.Split(header.Filename, ".")
 	// Copy the image data to my buffer
 	io.Copy(&buf, file)
 
+	//FIXME real info
 	// Fill the image struct
 	var image Image
-	image.Name = name[0]
-	image.Size = buf.Len()
+	image.WorkloadId = "tmp"
+	image.ImageId = "tmp"
+	image.Type = "tmp"
 	image.Data, err = buf.ReadBytes(254)
 	if err != nil {
 		w.WriteHeader(409)
@@ -186,9 +202,10 @@ func postUpload(w http.ResponseWriter, r *http.Request) {
 
 	var msg ImageMsg
 	msg = ImageMsg{
-		Message:  "An image has been successfully uploaded :)",
-		Filename: image.Name,
-		Size:     fmt.Sprintf("%d bytes", image.Size),
+		Message:    "An image has been successfully uploaded :)",
+		WorkloadId: image.WorkloadId,
+		ImageId:    image.ImageId,
+		Type:       image.Type,
 	}
 
 	json.NewEncoder(w).Encode(msg)
@@ -228,8 +245,8 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[INFO]: POST /workloads requested")
 
-    // handle token
-    tmp := r.Header.Get("Authorization")
+	// handle token
+	tmp := r.Header.Get("Authorization")
 	if strings.Fields(tmp)[0] != "Bearer" {
 		w.WriteHeader(400)
 		returnMsg(w, "bad request, check headers "+
@@ -238,7 +255,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
 	_, user, exists := searchToken(token)
-    fmt.Println(user)
+	fmt.Println(user)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+
@@ -265,8 +282,8 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 
 func getWorkloads(w http.ResponseWriter, r *http.Request) {
 
-    // handle token
-    tmp := r.Header.Get("Authorization")
+	// handle token
+	tmp := r.Header.Get("Authorization")
 	if strings.Fields(tmp)[0] != "Bearer" {
 		w.WriteHeader(400)
 		returnMsg(w, "bad request, check headers "+
@@ -275,7 +292,7 @@ func getWorkloads(w http.ResponseWriter, r *http.Request) {
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
 	_, user, exists := searchToken(token)
-    fmt.Println(user)
+	fmt.Println(user)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+
@@ -283,18 +300,18 @@ func getWorkloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-    // read path params
-    vars := mux.Vars(r)
-    id := vars["workload_id"]
-    if id == "" {
+	// read path params
+	vars := mux.Vars(r)
+	id := vars["workload_id"]
+	if id == "" {
 		w.WriteHeader(400)
 		returnMsg(w, "id missing, "+
 			"you should do smthg like workloads/{workload_id}")
 		return
-    }
+	}
 	fmt.Println("[INFO]: GET /workloads/" + id + " requested")
 
+	//FIXME real info
 	json.NewEncoder(w).Encode("hola")
 }
 
@@ -338,13 +355,13 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-func handleUpload(w http.ResponseWriter, r *http.Request) {
+func handleImages(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.WriteHeader(404)
 		returnMsg(w, "page not found")
 	case http.MethodPost:
-		postUpload(w, r) // post
+		postImages(w, r) // post
 	case http.MethodPut:
 		w.WriteHeader(404)
 		returnMsg(w, "page not found")
@@ -409,13 +426,13 @@ func handleRequests() {
 	router.HandleFunc("/logout", handleLogout)
 	router.HandleFunc("/status", handleStatus)
 	//TODO
-	router.HandleFunc("/workloads", handleWorkloads) // POST
+	router.HandleFunc("/workloads", handleWorkloads)               // POST
 	router.HandleFunc("/workloads/{workload_id}", handleWorkloads) // GET
-	//router.HandleFunc("/images", handleImages) // POST cp upload
+	router.HandleFunc("/images", handleImages)                     // POST cp upload
 	//router.HandleFunc("/images/{image_id}", handleImagesId) // POST cp upload
 
 	// no longer usefull
-	router.HandleFunc("/upload", handleUpload)
+	//router.HandleFunc("/upload", handleUpload)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
