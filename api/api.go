@@ -228,6 +228,24 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[INFO]: POST /workloads requested")
 
+    // handle token
+    tmp := r.Header.Get("Authorization")
+	if strings.Fields(tmp)[0] != "Bearer" {
+		w.WriteHeader(400)
+		returnMsg(w, "bad request, check headers "+
+			"you must send a Bearer token")
+		return
+	}
+	token := strings.Fields(tmp)[1] // get the token from header
+	_, user, exists := searchToken(token)
+    fmt.Println(user)
+	if !exists {
+		w.WriteHeader(400)
+		returnMsg(w, "token not found, "+
+			"please provide a valid one")
+		return
+	}
+
 	// handle body request
 	body, _ := ioutil.ReadAll(r.Body)
 	var workloadreq WorkloadReq
@@ -243,6 +261,35 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(workloadreq)
+}
+
+func getWorkloads(w http.ResponseWriter, r *http.Request) {
+
+    // handle token
+    tmp := r.Header.Get("Authorization")
+	if strings.Fields(tmp)[0] != "Bearer" {
+		w.WriteHeader(400)
+		returnMsg(w, "bad request, check headers "+
+			"you must send a Bearer token")
+		return
+	}
+	token := strings.Fields(tmp)[1] // get the token from header
+	_, user, exists := searchToken(token)
+    fmt.Println(user)
+	if !exists {
+		w.WriteHeader(400)
+		returnMsg(w, "token not found, "+
+			"please provide a valid one")
+		return
+	}
+
+
+    // read path params
+    vars := mux.Vars(r)
+    id := vars["workload_id"]
+	fmt.Println("[INFO]: GET /workloads/" + id + " requested")
+
+	json.NewEncoder(w).Encode("hola")
 }
 
 /********************* Handler Functions ***************************/
@@ -331,7 +378,7 @@ func handleWorkloads(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 		returnMsg(w, "page not found")
 	case http.MethodPost:
-		postWorkloads(w, r) //get
+		postWorkloads(w, r) //post
 	case http.MethodPut:
 		w.WriteHeader(404)
 		returnMsg(w, "page not found")
@@ -344,6 +391,27 @@ func handleWorkloads(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+func handleWorkloadsId(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		getWorkloads(w, r) //get
+	case http.MethodPost:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	case http.MethodPut:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	case http.MethodDelete:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	default:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	}
+
+}
+
 
 func handleRequests() {
 
@@ -358,7 +426,7 @@ func handleRequests() {
 	router.HandleFunc("/status", handleStatus)
 	//TODO
 	router.HandleFunc("/workloads", handleWorkloads) // POST
-	//router.HandleFunc("/workloads/{workload_id}", handleWorkloadsId) // GET
+	router.HandleFunc("/workloads/{workload_id}", handleWorkloadsId) // GET
 	//router.HandleFunc("/images", handleImages) // POST cp upload
 	//router.HandleFunc("/images/{image_id}", handleImagesId) // POST cp upload
 
