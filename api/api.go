@@ -177,9 +177,17 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	file, _, err := r.FormFile("data")
 	if err != nil {
-		fmt.Println(err)
-		panic(err)
+		w.WriteHeader(400)
+		returnMsg(w, err.Error())
+		return
 	}
+	tmpWorkloadId := r.FormValue("workload_id")
+	if tmpWorkloadId == "" {
+		w.WriteHeader(400)
+		returnMsg(w, "you need to send a workload_id in the form")
+		return
+	}
+
 	defer file.Close()
 	// Copy the image data to my buffer
 	io.Copy(&buf, file)
@@ -187,7 +195,7 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	//FIXME real info
 	// Fill the image struct
 	var image Image
-	image.WorkloadId = "tmp"
+	image.WorkloadId = tmpWorkloadId
 	image.ImageId = "tmp"
 	image.Type = "tmp"
 	image.Data, err = buf.ReadBytes(254)
