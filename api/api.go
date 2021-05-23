@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -48,12 +49,25 @@ type Message struct {
 	Message string `json:"message"`
 }
 
+type WorkloadReq struct {
+	Filter       string `json:"filter"`
+	WorkloadName string `json:"workload_name"`
+}
+
+type Workload struct {
+	WorkloadId     string `json:"workload_id"`
+	Filter         string `json:"filter"`
+	WorkloadName   string `json:"workload_name"`
+	Status         string `json:"status"`
+	RunningJobs    int    `json:"running_jobs"`
+	FilteredImages string `json:"filtered_images"`
+}
+
 var Users []User /* this will act as our DB */
 
 /********************* Endpoint Functions ***************************/
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-
 	w.WriteHeader(200)
 	returnMsg(w, "DPIP REST API index. Invalid enpoints will redirect here")
 	fmt.Println("[INFO]: / requested")
@@ -211,6 +225,26 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(status)
 }
 
+func postWorkloads(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("[INFO]: POST /workloads requested")
+
+	// handle body request
+	body, _ := ioutil.ReadAll(r.Body)
+	var workloadreq WorkloadReq
+	json.Unmarshal(body, &workloadreq)
+
+	// check if json sent is correct
+	if workloadreq.Filter == "" ||
+		workloadreq.WorkloadName == "" {
+		w.WriteHeader(400)
+		returnMsg(w, "bad request, "+
+			"json sent misspelled or missing field")
+		return
+	}
+
+	json.NewEncoder(w).Encode(workloadreq)
+}
+
 /********************* Handler Functions ***************************/
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -291,17 +325,47 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func handleWorkloads(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	case http.MethodPost:
+		postWorkloads(w, r) //get
+	case http.MethodPut:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	case http.MethodDelete:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	default:
+		w.WriteHeader(404)
+		returnMsg(w, "page not found")
+	}
+
+}
+
 func handleRequests() {
 
-    router := mux.NewRouter().StrictSlash(true)
+	// create the gorilla/mux http router, this
+	// will help us parsing the path params in
+	// the endpoints
+	router := mux.NewRouter().StrictSlash(true)
 
-    router.HandleFunc("/", homePage)
+	router.HandleFunc("/", homePage)
 	router.HandleFunc("/login", handleLogin)
 	router.HandleFunc("/logout", handleLogout)
 	router.HandleFunc("/status", handleStatus)
+	//TODO
+	router.HandleFunc("/workloads", handleWorkloads) // POST
+	//router.HandleFunc("/workloads/{workload_id}", handleWorkloadsId) // GET
+	//router.HandleFunc("/images", handleImages) // POST cp upload
+	//router.HandleFunc("/images/{image_id}", handleImagesId) // POST cp upload
+
+	// no longer usefull
 	router.HandleFunc("/upload", handleUpload)
 
-    log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
 /********************* Helper Functions ***************************/
