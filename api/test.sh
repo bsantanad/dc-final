@@ -27,10 +27,22 @@ while test $# -gt 0; do
         curl -H "Content-Type: application/json" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
             -X GET \
-            localhost:8080/workloads/2 | jq
+            localhost:8080/workloads/4 | jq
         logout_jose
         shift
         ;;
+    --post-images)
+        login_jose
+        curl -H "Content-Type: multipart/form-data" \
+             -H "Authorization: Bearer am9zZTptYXJpYQ==" \
+             -F "data=@test.png" \
+             -F "workload_id=1" \
+             -X POST \
+             localhost:8080/images | jq
+        logout_jose
+        shift
+        ;;
+
     *)
       break
       ;;
