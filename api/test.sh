@@ -42,7 +42,15 @@ while test $# -gt 0; do
         logout_jose
         shift
         ;;
-
+    --get-images)
+        login_jose
+        curl -H "Content-Type: application/json" \
+             -H "Authorization: Bearer am9zZTptYXJpYQ==" \
+            -X GET \
+            localhost:8080/images/4 | jq
+        logout_jose
+        shift
+        ;;
     *)
       break
       ;;
