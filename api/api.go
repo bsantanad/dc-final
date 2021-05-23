@@ -211,6 +211,41 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(msg)
 }
 
+func getImages(w http.ResponseWriter, r *http.Request) {
+	// handle token
+	tmp := r.Header.Get("Authorization")
+	if strings.Fields(tmp)[0] != "Bearer" {
+		w.WriteHeader(400)
+		returnMsg(w, "bad request, check headers "+
+			"you must send a Bearer token")
+		return
+	}
+	token := strings.Fields(tmp)[1] // get the token from header
+	_, user, exists := searchToken(token)
+	fmt.Println(user)
+	if !exists {
+		w.WriteHeader(400)
+		returnMsg(w, "token not found, "+
+			"please provide a valid one")
+		return
+	}
+
+	// read path params
+	vars := mux.Vars(r)
+	id := vars["image_id"]
+	if id == "" {
+		w.WriteHeader(400)
+		returnMsg(w, "id missing, "+
+			"you should do smthg like images/{image_id}")
+		return
+	}
+	fmt.Println("[INFO]: GET /images/" + id + " requested")
+
+	//FIXME real info
+	json.NewEncoder(w).Encode("hola")
+
+}
+
 // getStatus, show the status of the account related
 // to the token sent in the header, proper validations
 // are done, and then the creation time, and a msg is
@@ -358,8 +393,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 func handleImages(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		w.WriteHeader(404)
-		returnMsg(w, "page not found")
+		getImages(w, r) // get
 	case http.MethodPost:
 		postImages(w, r) // post
 	case http.MethodPut:
@@ -426,10 +460,10 @@ func handleRequests() {
 	router.HandleFunc("/logout", handleLogout)
 	router.HandleFunc("/status", handleStatus)
 	//TODO
-	router.HandleFunc("/workloads", handleWorkloads)               // POST
-	router.HandleFunc("/workloads/{workload_id}", handleWorkloads) // GET
-	router.HandleFunc("/images", handleImages)                     // POST cp upload
-	//router.HandleFunc("/images/{image_id}", handleImagesId) // POST cp upload
+	router.HandleFunc("/workloads", handleWorkloads)
+	router.HandleFunc("/workloads/{workload_id}", handleWorkloads)
+	router.HandleFunc("/images", handleImages)
+	router.HandleFunc("/images/{image_id}", handleImages)
 
 	// no longer usefull
 	//router.HandleFunc("/upload", handleUpload)
