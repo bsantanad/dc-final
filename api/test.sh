@@ -12,7 +12,7 @@ logout_jose() {
 
 while test $# -gt 0; do
   case "$1" in
-    w|--post-workloads)
+    --post-workloads)
         login_jose
         curl -H "Content-Type: application/json" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
@@ -48,6 +48,15 @@ while test $# -gt 0; do
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
             -X GET \
             localhost:8080/images/4 | jq
+        logout_jose
+        shift
+        ;;
+    --get-status)
+        login_jose
+        curl -H "Content-Type: application/json" \
+             -H "Authorization: Bearer am9zZTptYXJpYQ==" \
+            -X GET \
+            localhost:8080/status | jq
         logout_jose
         shift
         ;;
