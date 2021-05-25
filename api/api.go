@@ -16,7 +16,6 @@ import (
 
 	"github.com/gorilla/mux"
 
-	//"go.nanomsg.org/mangos"
 	"go.nanomsg.org/mangos"
 	"go.nanomsg.org/mangos/protocol/push"
 )
@@ -86,10 +85,10 @@ type ImageReq struct {
 var Users []User /* this will act as our DB */
 var Ids uint64
 
-/***************** controller ****/
-var controllerAddress = "tcp://localhost:40899"
+/***************** send msg via pipeline ****/
+var controllerUrl = "tcp://localhost:40899"
 
-func pushMsg(url string, msg string) {
+func pushMsgToController(url string, msg string) {
 	var sock mangos.Socket
 	var err error
 
@@ -99,7 +98,6 @@ func pushMsg(url string, msg string) {
 	if err = sock.Dial(url); err != nil {
 		die("can't dial on push socket: %s", err.Error())
 	}
-	fmt.Printf("NODE1: SENDING \"%s\"\n", msg)
 	if err = sock.Send([]byte(msg)); err != nil {
 		die("can't send message on push socket: %s", err.Error())
 	}
@@ -372,7 +370,16 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	workload.RunningJobs = 0
 	workload.FilteredImages = nil
 
-	pushMsg("tcp://localhost:40899", "hello")
+	workloadStr, err := json.Marshal(workload)
+	if err != nil {
+		w.WriteHeader(500)
+		returnMsg(w, "server internal error, "+
+			"couldnt marshal json")
+		return
+
+	}
+
+	pushMsgToController(controllerUrl, string(workloadStr))
 
 	json.NewEncoder(w).Encode(workload)
 }

@@ -2,16 +2,13 @@ package controller
 
 import (
 	"fmt"
-	//"log"
+	"encoding/json"
 	"os"
-	//"time"
 
 	"go.nanomsg.org/mangos"
 	"go.nanomsg.org/mangos/protocol/pull"
 
-	// register transports
 	_ "go.nanomsg.org/mangos/transport/all"
-	//_ "go.nanomsg.org/mangos/transport/all"
 )
 
 // shared structs
@@ -27,9 +24,9 @@ type Workload struct {
 // end shared structs
 
 // fake database
-var workloads []Workload
+var Workloads []Workload
 
-var address = "tcp://localhost:40899"
+var workloadsUrl = "tcp://localhost:40899"
 
 func receiveWorkloads() {
 	var sock mangos.Socket
@@ -39,7 +36,7 @@ func receiveWorkloads() {
 	if sock, err = pull.NewSocket(); err != nil {
 		die("can't get new pull socket: %s", err)
 	}
-	if err = sock.Listen(address); err != nil {
+	if err = sock.Listen(workloadsUrl); err != nil {
 		die("can't listen on pull socket: %s", err.Error())
 	}
 	for {
@@ -48,7 +45,13 @@ func receiveWorkloads() {
 		if err != nil {
 			die("cannot receive from mangos Socket: %s", err.Error())
 		}
-		fmt.Printf("NODE0: RECEIVED \"%s\"\n", msg)
+
+        // after getting json string, convert it to workload struct
+        // and add it to the fake database
+		var workload Workload
+		json.Unmarshal(msg, &workload)
+		Workloads = append(Workloads, workload)
+		fmt.Println(Workloads)
 	}
 }
 
