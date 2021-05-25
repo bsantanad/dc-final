@@ -39,8 +39,8 @@ type Image struct {
 */
 
 type Image struct {
-	WorkloadId string `json:"workload_id"`
-	ImageId    string `json:"image_id"`
+	WorkloadId uint64 `json:"workload_id"`
+	ImageId    uint64 `json:"image_id"`
 	Type       string `json:"type"`
 	Data       []byte `json:"data"`
 }
@@ -60,8 +60,8 @@ type Status struct {
 
 type ImageMsg struct {
 	Message    string `json:"message"`
-	WorkloadId string `json:"workload_id"`
-	ImageId    string `json:"image_id"`
+	WorkloadId uint64 `json:"workload_id"`
+	ImageId    uint64 `json:"image_id"`
 	Type       string `json:"type"`
 }
 
@@ -89,7 +89,8 @@ type ImageReq struct {
 
 var Users []User /* this will act as our DB */
 var Workloads []Workload
-var Ids uint64
+var workloadsIds uint64
+var imagesIds uint64
 
 /***************** send msg via pipeline ****/
 var controllerUrl = "tcp://localhost:40899"
@@ -217,10 +218,20 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		returnMsg(w, err.Error())
 		return
 	}
-	tmpWorkloadId := r.FormValue("workload_id")
-	if tmpWorkloadId == "" {
+
+	// validate workloads id
+	wrkId := r.FormValue("workload_id")
+	if wrkId == "" {
 		w.WriteHeader(400)
 		returnMsg(w, "you need to send a workload_id in the form")
+		return
+	}
+	workloadId, err := strconv.ParseUint(wrkId, 10, 64)
+	if workloadId > workloadsIds || workloadsIds == 0 {
+		w.WriteHeader(400)
+		returnMsg(w, "the workload id doesnt exists, "+
+			"please check again, you may have to create a workload first."+
+			"If you have, then check that the id you sent is in fact correct")
 		return
 	}
 
@@ -228,11 +239,11 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	// Copy the image data to my buffer
 	io.Copy(&buf, file)
 
-	//FIXME real info
 	// Fill the image struct
 	var image Image
-	image.WorkloadId = tmpWorkloadId
-	image.ImageId = "tmp"
+	image.WorkloadId = workloadId
+	image.ImageId = imagesIds
+	imagesIds += 1
 	image.Type = "tmp"
 	image.Data, err = buf.ReadBytes(254)
 	if err != nil {
@@ -369,8 +380,8 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 
 	// create workload struct
 	var workload Workload
-	workload.Id = Ids
-	Ids += 1
+	workload.Id = workloadsIds
+	workloadsIds += 1
 	workload.Filter = workloadreq.Filter
 	workload.Name = workloadreq.WorkloadName
 	workload.Status = "completed"
@@ -434,7 +445,7 @@ func getWorkloads(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if intId > Ids || Ids == 0 {
+	if intId > workloadsIds || workloadsIds == 0 {
 		w.WriteHeader(400)
 		returnMsg(w, "that id doesnt exists, "+
 			"please check again")
