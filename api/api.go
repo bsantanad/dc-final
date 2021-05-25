@@ -88,7 +88,7 @@ var Ids uint64
 /***************** send msg via pipeline ****/
 var controllerUrl = "tcp://localhost:40899"
 
-func pushMsgToController(url string, msg string) {
+func pushMsg(url string, msg string) {
 	var sock mangos.Socket
 	var err error
 
@@ -361,6 +361,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+    // create workload struct
 	var workload Workload
 	workload.Id = Ids
 	Ids += 1
@@ -370,6 +371,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	workload.RunningJobs = 0
 	workload.FilteredImages = nil
 
+    // transform to string
 	workloadStr, err := json.Marshal(workload)
 	if err != nil {
 		w.WriteHeader(500)
@@ -379,7 +381,8 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	pushMsgToController(controllerUrl, string(workloadStr))
+    // push workload to controller 
+	pushMsg(controllerUrl, string(workloadStr))
 
 	json.NewEncoder(w).Encode(workload)
 }
