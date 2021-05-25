@@ -15,6 +15,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+
+	//"go.nanomsg.org/mangos"
+	"nanomsg.org/go/mangos/v2"
+	"nanomsg.org/go/mangos/v2/protocol/push"
 )
 
 type LoginResponse struct {
@@ -81,6 +85,31 @@ type ImageReq struct {
 
 var Users []User /* this will act as our DB */
 var Ids uint64
+
+/***************** controller ****/
+var controllerAddress = "tcp://localhost:40899"
+
+func pushMsg(url string, msg string) {
+	var sock mangos.Socket
+	var err error
+
+	if sock, err = push.NewSocket(); err != nil {
+		die("can't get new push socket: %s", err.Error())
+	}
+	if err = sock.Dial(url); err != nil {
+		die("can't dial on push socket: %s", err.Error())
+	}
+	fmt.Printf("NODE1: SENDING \"%s\"\n", msg)
+	if err = sock.Send([]byte(msg)); err != nil {
+		die("can't send message on push socket: %s", err.Error())
+	}
+	fmt.Printf("NODE1: SENT \"%s\"\n", msg)
+	sock.Close()
+}
+func die(format string, v ...interface{}) {
+	fmt.Fprintln(os.Stderr, fmt.Sprintf(format, v...))
+	os.Exit(1)
+}
 
 /********************* Endpoint Functions ***************************/
 
@@ -342,6 +371,8 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	workload.Status = "completed"
 	workload.RunningJobs = 0
 	workload.FilteredImages = nil
+
+	pushMsg("tcp://localhost:40899", "hello")
 
 	json.NewEncoder(w).Encode(workload)
 }
