@@ -67,12 +67,12 @@ type WorkloadReq struct {
 }
 
 type Workload struct {
-	WorkloadId     string `json:"workload_id"`
-	Filter         string `json:"filter"`
-	WorkloadName   string `json:"workload_name"`
-	Status         string `json:"status"`
-	RunningJobs    int    `json:"running_jobs"`
-	FilteredImages string `json:"filtered_images"`
+	Id             uint64   `json:"workload_id"`
+	Filter         string   `json:"filter"`
+	Name           string   `json:"workload_name"`
+	Status         string   `json:"status"`
+	RunningJobs    int      `json:"running_jobs"`
+	FilteredImages []uint64 `json:"filtered_images"`
 }
 
 type ImageReq struct {
@@ -80,6 +80,7 @@ type ImageReq struct {
 }
 
 var Users []User /* this will act as our DB */
+var Ids uint64
 
 /********************* Endpoint Functions ***************************/
 
@@ -333,7 +334,16 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(workloadreq)
+	var workload Workload
+	workload.Id = Ids
+	Ids += 1
+	workload.Filter = workloadreq.Filter
+	workload.Name = workloadreq.WorkloadName
+	workload.Status = "completed"
+	workload.RunningJobs = 0
+	workload.FilteredImages = nil
+
+	json.NewEncoder(w).Encode(workload)
 }
 
 func getWorkloads(w http.ResponseWriter, r *http.Request) {
