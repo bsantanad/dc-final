@@ -15,6 +15,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+
+	"go.nanomsg.org/mangos"
+	"go.nanomsg.org/mangos/protocol/push"
 )
 
 type LoginResponse struct {
@@ -67,12 +70,12 @@ type WorkloadReq struct {
 }
 
 type Workload struct {
-	WorkloadId     string `json:"workload_id"`
-	Filter         string `json:"filter"`
-	WorkloadName   string `json:"workload_name"`
-	Status         string `json:"status"`
-	RunningJobs    int    `json:"running_jobs"`
-	FilteredImages string `json:"filtered_images"`
+	Id             uint64   `json:"workload_id"`
+	Filter         string   `json:"filter"`
+	Name           string   `json:"workload_name"`
+	Status         string   `json:"status"`
+	RunningJobs    int      `json:"running_jobs"`
+	FilteredImages []uint64 `json:"filtered_images"`
 }
 
 type ImageReq struct {
@@ -80,6 +83,31 @@ type ImageReq struct {
 }
 
 var Users []User /* this will act as our DB */
+var Ids uint64
+
+/***************** send msg via pipeline ****/
+var controllerUrl = "tcp://localhost:40899"
+
+func pushMsgToController(url string, msg string) {
+	var sock mangos.Socket
+	var err error
+
+	if sock, err = push.NewSocket(); err != nil {
+		die("can't get new push socket: %s", err.Error())
+	}
+	if err = sock.Dial(url); err != nil {
+		die("can't dial on push socket: %s", err.Error())
+	}
+	if err = sock.Send([]byte(msg)); err != nil {
+		die("can't send message on push socket: %s", err.Error())
+	}
+	time.Sleep(time.Second / 10)
+	sock.Close()
+}
+func die(format string, v ...interface{}) {
+	fmt.Fprintln(os.Stderr, fmt.Sprintf(format, v...))
+	os.Exit(1)
+}
 
 /********************* Endpoint Functions ***************************/
 
@@ -333,7 +361,27 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(workloadreq)
+	var workload Workload
+	workload.Id = Ids
+	Ids += 1
+	workload.Filter = workloadreq.Filter
+	workload.Name = workloadreq.WorkloadName
+	workload.Status = "completed"
+	workload.RunningJobs = 0
+	workload.FilteredImages = nil
+
+	workloadStr, err := json.Marshal(workload)
+	if err != nil {
+		w.WriteHeader(500)
+		returnMsg(w, "server internal error, "+
+			"couldnt marshal json")
+		return
+
+	}
+
+	pushMsgToController(controllerUrl, string(workloadStr))
+
+	json.NewEncoder(w).Encode(workload)
 }
 
 func getWorkloads(w http.ResponseWriter, r *http.Request) {
