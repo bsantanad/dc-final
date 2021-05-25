@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"go.nanomsg.org/mangos"
@@ -46,12 +46,11 @@ func receiveWorkloads() {
 			die("cannot receive from mangos Socket: %s", err.Error())
 		}
 
-        // after getting json string, convert it to workload struct
-        // and add it to the fake database
+		// after getting json string, convert it to workload struct
+		// and add it to the fake database
 		var workload Workload
 		json.Unmarshal(msg, &workload)
 		Workloads = append(Workloads, workload)
-		fmt.Println(Workloads)
 	}
 }
 
@@ -61,5 +60,5 @@ func die(format string, v ...interface{}) {
 }
 
 func Start() {
-	receiveWorkloads()
+	go receiveWorkloads()
 }

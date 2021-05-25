@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // authors: bsantanad & renataaparicio
+
+//FIXME DRY - do not repeat yourself - the workloads array is repeated
+// in both the controller and the API, this can be fixed changing the
+// scalability protocol from PIPELINE to PAIR
 package api
 
 import (
@@ -11,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,9 +53,9 @@ type User struct {
 }
 
 type Status struct {
-	SystemName string `json:"system_name"`
-	ServerTime string `json:"server_time"`
-	//Workloads array workloads `json:"active_workloads"`
+	SystemName string     `json:"system_name"`
+	ServerTime string     `json:"server_time"`
+	Workloads  []Workload `json:"active_workloads"`
 }
 
 type ImageMsg struct {
@@ -83,6 +88,7 @@ type ImageReq struct {
 }
 
 var Users []User /* this will act as our DB */
+var Workloads []Workload
 var Ids uint64
 
 /***************** send msg via pipeline ****/
@@ -259,8 +265,8 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
-	_, user, exists := searchToken(token)
-	fmt.Println(user)
+	_, _, exists := searchToken(token)
+	//fmt.Println(user)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+
@@ -320,7 +326,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		SystemName: hostname,
 		ServerTime: time.Now().String(),
 		//FIXME
-		//Workloads : array,
+		Workloads: Workloads,
 	}
 
 	json.NewEncoder(w).Encode(status)
@@ -338,8 +344,8 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
-	_, user, exists := searchToken(token)
-	fmt.Println(user)
+	_, _, exists := searchToken(token)
+	//fmt.Println(user)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+
@@ -361,7 +367,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    // create workload struct
+	// create workload struct
 	var workload Workload
 	workload.Id = Ids
 	Ids += 1
@@ -370,8 +376,9 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	workload.Status = "completed"
 	workload.RunningJobs = 0
 	workload.FilteredImages = nil
+	Workloads = append(Workloads, workload)
 
-    // transform to string
+	// transform to string
 	workloadStr, err := json.Marshal(workload)
 	if err != nil {
 		w.WriteHeader(500)
@@ -381,7 +388,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-    // push workload to controller 
+	// push workload to controller
 	pushMsg(controllerUrl, string(workloadStr))
 
 	json.NewEncoder(w).Encode(workload)
@@ -418,8 +425,24 @@ func getWorkloads(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("[INFO]: GET /workloads/" + id + " requested")
 
-	//FIXME real info
-	json.NewEncoder(w).Encode("hola")
+	intId, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		w.WriteHeader(400)
+		returnMsg(w, "you didnt send a valid number, "+
+			"please check again")
+		return
+
+	}
+
+	if intId > Ids || Ids == 0 {
+		w.WriteHeader(400)
+		returnMsg(w, "that id doesnt exists, "+
+			"please check again")
+		return
+
+	}
+
+	json.NewEncoder(w).Encode(Workloads[intId])
 }
 
 /********************* Handler Functions ***************************/
