@@ -6,14 +6,11 @@ import (
 	"os"
 	//"time"
 
-	//"go.nanomsg.org/mangos"
-	"nanomsg.org/go/mangos/v2"
-	"nanomsg.org/go/mangos/v2/protocol/pull"
-	//"go.nanomsg.org/mangos/protocol/sub"
-	//"go.nanomsg.org/mangos/protocol/pub"
+	"go.nanomsg.org/mangos"
+	"go.nanomsg.org/mangos/protocol/pull"
 
 	// register transports
-	_ "nanomsg.org/go/mangos/v2/transport/all"
+	_ "go.nanomsg.org/mangos/transport/all"
 	//_ "go.nanomsg.org/mangos/transport/all"
 )
 
@@ -39,19 +36,19 @@ func receiveWorkloads() {
 	var err error
 	var msg []byte
 
-	sock, err = pull.NewSocket()
-	if err != nil {
-		die("can't get new pull socket: %s", err.Error())
+	if sock, err = pull.NewSocket(); err != nil {
+		die("can't get new pull socket: %s", err)
 	}
-	err = sock.Listen(address)
-	if err != nil {
+	if err = sock.Listen(address); err != nil {
 		die("can't listen on pull socket: %s", err.Error())
 	}
 	for {
-		fmt.Println("im listening")
+		// Could also use sock.RecvMsg to get header
 		msg, err = sock.Recv()
+		if err != nil {
+			die("cannot receive from mangos Socket: %s", err.Error())
+		}
 		fmt.Printf("NODE0: RECEIVED \"%s\"\n", msg)
-		fmt.Printf(err.Error())
 	}
 }
 

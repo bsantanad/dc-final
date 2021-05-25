@@ -17,8 +17,8 @@ import (
 	"github.com/gorilla/mux"
 
 	//"go.nanomsg.org/mangos"
-	"nanomsg.org/go/mangos/v2"
-	"nanomsg.org/go/mangos/v2/protocol/push"
+	"go.nanomsg.org/mangos"
+	"go.nanomsg.org/mangos/protocol/push"
 )
 
 type LoginResponse struct {
@@ -103,7 +103,7 @@ func pushMsg(url string, msg string) {
 	if err = sock.Send([]byte(msg)); err != nil {
 		die("can't send message on push socket: %s", err.Error())
 	}
-	fmt.Printf("NODE1: SENT \"%s\"\n", msg)
+	time.Sleep(time.Second / 10)
 	sock.Close()
 }
 func die(format string, v ...interface{}) {
