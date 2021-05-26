@@ -343,6 +343,14 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[INFO]: GET /images/" + id + " requested")
 
 	intId, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		w.WriteHeader(400)
+		returnMsg(w, "you didnt send a valid number, "+
+			"please check again")
+		return
+
+	}
+
 	// validate id
 	if intId >= imagesIds || imagesIds == 0 {
 		w.WriteHeader(400)
@@ -350,19 +358,21 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	permissions := 0775
-	actualImg := Images[intId].Data
-	err = ioutil.WriteFile(id, actualImg, os.FileMode(permissions))
-	if err != nil {
-		w.WriteHeader(500)
-		returnMsg(w, "internal server error"+
-			"couldn't get image")
-		return
-	}
+	/*
+		permissions := 0775
+		actualImg := Images[intId].Data
+		err = ioutil.WriteFile(id, actualImg, os.FileMode(permissions))
+		if err != nil {
+			w.WriteHeader(500)
+			returnMsg(w, "internal server error"+
+				"couldn't get image")
+			return
+		}
+	*/
 
 	// download images
 	w.WriteHeader(200)
-	returnMsg(w, "image downloaded as "+id)
+	w.Write(Images[intId].Data)
 	return
 
 }
