@@ -40,7 +40,7 @@ type Image struct {
 
 type Image struct {
 	WorkloadId uint64 `json:"workload_id"`
-	ImageId    uint64 `json:"image_id"`
+	Id         uint64 `json:"image_id"`
 	Type       string `json:"type"`
 	Data       []byte `json:"data"`
 }
@@ -75,12 +75,12 @@ type WorkloadReq struct {
 }
 
 type Workload struct {
-	Id             uint64   `json:"workload_id"`
-	Filter         string   `json:"filter"`
-	Name           string   `json:"workload_name"`
-	Status         string   `json:"status"`
-	RunningJobs    int      `json:"running_jobs"`
-	FilteredImages []uint64 `json:"filtered_images"`
+	Id          uint64   `json:"workload_id"`
+	Filter      string   `json:"filter"`
+	Name        string   `json:"workload_name"`
+	Status      string   `json:"status"`
+	RunningJobs int      `json:"running_jobs"`
+	Images      []uint64 `json:"filtered_images"`
 }
 
 type ImageReq struct {
@@ -89,11 +89,13 @@ type ImageReq struct {
 
 var Users []User /* this will act as our DB */
 var Workloads []Workload
+var Images []Image
 var workloadsIds uint64
 var imagesIds uint64
 
 /***************** send msg via pipeline ****/
-var controllerUrl = "tcp://localhost:40899"
+var workloadsUrl = "tcp://localhost:40899"
+var imagesUrl = "tcp://localhost:40900"
 
 func pushMsg(url string, msg string) {
 	var sock mangos.Socket
@@ -231,7 +233,7 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
 		returnMsg(w, "the workload id doesnt exists, "+
 			"please check again, you may have to create a workload first."+
-			"If you have, then check that the id you sent is in fact correct")
+			" If you have, then check that the id you sent is in fact correct")
 		return
 	}
 
@@ -242,7 +244,7 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	// Fill the image struct
 	var image Image
 	image.WorkloadId = workloadId
-	image.ImageId = imagesIds
+	image.Id = imagesIds
 	imagesIds += 1
 	image.Type = "tmp"
 	image.Data, err = buf.ReadBytes(254)
@@ -255,11 +257,39 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 
 	buf.Reset()
 
+	// add image to workload's image array
+	Workloads[workloadId].Images = append(Workloads[workloadId].Images,
+		image.Id)
+	workload := Workloads[workloadId]
+	// transform to string
+	wrkStr, err := json.Marshal(workload)
+	if err != nil {
+		w.WriteHeader(500)
+		returnMsg(w, "server internal error, "+
+			"couldnt marshal json")
+		return
+	}
+	pushMsg(workloadsUrl, string(wrkStr))
+
+	// transform to string
+	imgStr, err := json.Marshal(image)
+	if err != nil {
+		w.WriteHeader(500)
+		returnMsg(w, "server internal error, "+
+			"couldnt marshal json")
+		return
+	}
+	// push image to controller
+	pushMsg(imagesUrl, string(imgStr))
+
+	// add image to fake db
+	Images = append(Images, image)
+
 	var msg ImageMsg
 	msg = ImageMsg{
 		Message:    "An image has been successfully uploaded :)",
 		WorkloadId: image.WorkloadId,
-		ImageId:    image.ImageId,
+		ImageId:    image.Id,
 		Type:       image.Type,
 	}
 
@@ -386,7 +416,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	workload.Name = workloadreq.WorkloadName
 	workload.Status = "completed"
 	workload.RunningJobs = 0
-	workload.FilteredImages = nil
+	workload.Images = nil
 	Workloads = append(Workloads, workload)
 
 	// transform to string
@@ -400,7 +430,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// push workload to controller
-	pushMsg(controllerUrl, string(workloadStr))
+	pushMsg(workloadsUrl, string(workloadStr))
 
 	json.NewEncoder(w).Encode(workload)
 }
