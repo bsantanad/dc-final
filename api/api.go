@@ -262,13 +262,7 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	image.Type = imgType
 	image.Data = buf.Bytes()
 	image.Size = len(image.Data)
-	/*
-		if err != nil {
-			w.WriteHeader(409)
-			returnMsg(w, "Image couldn't be uploaded :(. Please try again")
-			return
-		}
-	*/
+
 	Users[index].Images = append(user.Images, image)
 
 	// add image to workload's image array
@@ -357,18 +351,6 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 		returnMsg(w, "the image id doesnt exists")
 		return
 	}
-
-	/*
-		permissions := 0775
-		actualImg := Images[intId].Data
-		err = ioutil.WriteFile(id, actualImg, os.FileMode(permissions))
-		if err != nil {
-			w.WriteHeader(500)
-			returnMsg(w, "internal server error"+
-				"couldn't get image")
-			return
-		}
-	*/
 
 	// download images
 	w.WriteHeader(200)
