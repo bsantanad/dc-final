@@ -223,17 +223,28 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 
 	// validate workloads id
 	wrkId := r.FormValue("workload_id")
-	if wrkId == "" {
+	imgType := r.FormValue("type")
+	if wrkId == "" ||
+		imgType == "" {
 		w.WriteHeader(400)
-		returnMsg(w, "you need to send a workload_id in the form")
+		returnMsg(w, "the form sent is missing workload_id or type")
 		return
 	}
+	// validate id
 	workloadId, err := strconv.ParseUint(wrkId, 10, 64)
-	if workloadId > workloadsIds || workloadsIds == 0 {
+	if workloadId >= workloadsIds || workloadsIds == 0 {
 		w.WriteHeader(400)
 		returnMsg(w, "the workload id doesnt exists, "+
 			"please check again, you may have to create a workload first."+
 			" If you have, then check that the id you sent is in fact correct")
+		return
+	}
+	// validate type
+	fmt.Println(imgType)
+	if imgType != "original" && imgType != "filtered" {
+		w.WriteHeader(400)
+		returnMsg(w, "the type sent isnt valid, "+
+			"try with original or filtered")
 		return
 	}
 
@@ -246,7 +257,7 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	image.WorkloadId = workloadId
 	image.Id = imagesIds
 	imagesIds += 1
-	image.Type = "tmp"
+	image.Type = imgType
 	image.Data, err = buf.ReadBytes(254)
 	if err != nil {
 		w.WriteHeader(409)
@@ -475,7 +486,7 @@ func getWorkloads(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if intId > workloadsIds || workloadsIds == 0 {
+	if intId >= workloadsIds || workloadsIds == 0 {
 		w.WriteHeader(400)
 		returnMsg(w, "that id doesnt exists, "+
 			"please check again")
