@@ -13,19 +13,20 @@ import (
 
 // shared structs
 type Workload struct {
-	Id             uint64   `json:"workload_id"`
-	Filter         string   `json:"filter"`
-	Name           string   `json:"workload_name"`
-	Status         string   `json:"status"`
-	RunningJobs    int      `json:"running_jobs"`
-	FilteredImages []uint64 `json:"filtered_images"`
+	Id          uint64   `json:"workload_id"`
+	Filter      string   `json:"filter"`
+	Name        string   `json:"workload_name"`
+	Status      string   `json:"status"`
+	RunningJobs int      `json:"running_jobs"`
+	Images      []uint64 `json:"filtered_images"`
 }
 
 type Image struct {
 	WorkloadId uint64 `json:"workload_id"`
-	ImageId    uint64 `json:"image_id"`
+	Id         uint64 `json:"image_id"`
 	Type       string `json:"type"`
 	Data       []byte `json:"data"`
+	Size       int    `json:"size"`
 }
 
 // end shared structs
