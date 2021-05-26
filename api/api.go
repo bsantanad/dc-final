@@ -43,6 +43,7 @@ type Image struct {
 	Id         uint64 `json:"image_id"`
 	Type       string `json:"type"`
 	Data       []byte `json:"data"`
+	Size       int    `json:"size"`
 }
 
 type User struct {
@@ -63,6 +64,7 @@ type ImageMsg struct {
 	WorkloadId uint64 `json:"workload_id"`
 	ImageId    uint64 `json:"image_id"`
 	Type       string `json:"type"`
+	Size       int    `json:"size"`
 }
 
 type Message struct {
@@ -213,13 +215,13 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 
 	// uploading the file part
 	r.ParseMultipartForm(32 << 20) // limit your max input length!
-	var buf bytes.Buffer
 	file, _, err := r.FormFile("data")
 	if err != nil {
 		w.WriteHeader(400)
 		returnMsg(w, err.Error())
 		return
 	}
+	defer file.Close()
 
 	// validate workloads id
 	wrkId := r.FormValue("workload_id")
@@ -248,8 +250,8 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer file.Close()
 	// Copy the image data to my buffer
+	var buf bytes.Buffer
 	io.Copy(&buf, file)
 
 	// Fill the image struct
@@ -258,15 +260,16 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	image.Id = imagesIds
 	imagesIds += 1
 	image.Type = imgType
-	image.Data, err = buf.ReadBytes(254)
-	if err != nil {
-		w.WriteHeader(409)
-		returnMsg(w, "Image couldn't be uploaded :(. Please try again")
-		return
-	}
+	image.Data = buf.Bytes()
+	image.Size = len(image.Data)
+	/*
+		if err != nil {
+			w.WriteHeader(409)
+			returnMsg(w, "Image couldn't be uploaded :(. Please try again")
+			return
+		}
+	*/
 	Users[index].Images = append(user.Images, image)
-
-	buf.Reset()
 
 	// add image to workload's image array
 	Workloads[workloadId].Images = append(Workloads[workloadId].Images,
@@ -302,8 +305,10 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		WorkloadId: image.WorkloadId,
 		ImageId:    image.Id,
 		Type:       image.Type,
+		Size:       image.Size,
 	}
 
+	buf.Reset()
 	json.NewEncoder(w).Encode(msg)
 }
 
@@ -337,9 +342,28 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("[INFO]: GET /images/" + id + " requested")
 
-	//FIXME real info
+	intId, err := strconv.ParseUint(id, 10, 64)
+	// validate id
+	if intId >= imagesIds || imagesIds == 0 {
+		w.WriteHeader(400)
+		returnMsg(w, "the image id doesnt exists")
+		return
+	}
+
+	permissions := 0775
+	actualImg := Images[intId].Data
+	err = ioutil.WriteFile(id, actualImg, os.FileMode(permissions))
+	if err != nil {
+		w.WriteHeader(500)
+		returnMsg(w, "internal server error"+
+			"couldn't get image")
+		return
+	}
+
 	// download images
-	json.NewEncoder(w).Encode("hola")
+	w.WriteHeader(200)
+	returnMsg(w, "image downloaded as "+id)
+	return
 
 }
 
@@ -377,8 +401,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	status = Status{
 		SystemName: hostname,
 		ServerTime: time.Now().String(),
-		//FIXME
-		Workloads: Workloads,
+		Workloads:  Workloads,
 	}
 
 	json.NewEncoder(w).Encode(status)
