@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"log"
-	"math/rand"
-	"time"
+	//"math/rand"
+	//"time"
 
 	"github.com/bsantanad/dc-final/api"
 	"github.com/bsantanad/dc-final/controller"
@@ -12,25 +12,26 @@ import (
 )
 
 func main() {
-	log.Println("Welcome to the Distributed and Parallel Image Processing System")
-
+	log.Println("Welcome to the Distributed and " +
+		"Parallel Image Processing System")
 
 	// Start Controller
 	go controller.Start()
+	go scheduler.Start()
 
 	// API
-	go api.Start()
+	api.Start()
 
-	// Start Scheduler
-	jobs := make(chan scheduler.Job)
-	go scheduler.Start(jobs)
-	// Send sample jobs
-	sampleJob := scheduler.Job{Address: "localhost:50051", RPCName: "hello"}
-
-
-	for {
-		sampleJob.RPCName = fmt.Sprintf("hello-%v", rand.Intn(10000))
-		jobs <- sampleJob
-		time.Sleep(time.Second * 5)
-	}
 }
+
+// Start Scheduler
+//jobs := make(chan scheduler.Job)
+//go scheduler.Start(jobs)
+// Send sample jobs
+//sampleJob := scheduler.Job{Address: "localhost:50051", RPCName: "hello"}
+
+//for {
+//sampleJob.RPCName = fmt.Sprintf("hello-%v", rand.Intn(10000))
+//jobs <- sampleJob
+//time.Sleep(time.Second * 5)
+//}

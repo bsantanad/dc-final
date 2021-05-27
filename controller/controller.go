@@ -12,9 +12,11 @@ import (
 
 	"go.nanomsg.org/mangos"
 	"go.nanomsg.org/mangos/protocol/pull"
+	"go.nanomsg.org/mangos/protocol/push"
 	"go.nanomsg.org/mangos/protocol/rep"
 
 	_ "go.nanomsg.org/mangos/transport/all"
+	//"github.com/bsantanad/dc-final/scheduler"
 )
 
 // shared structs
@@ -46,6 +48,12 @@ type LoginResponse struct {
 	Token   string `json:"token"`
 }
 
+type Job struct {
+	Filter  string   `json:"filter"`
+	ImageId uint64   `json:"image_id"`
+	Workers []Worker `json:"workers"`
+}
+
 // end shared structs
 
 // fake database
@@ -60,6 +68,7 @@ var apiUrl = "http://localhost:8080"
 var workloadsUrl = "tcp://localhost:40899"
 var imagesUrl = "tcp://localhost:40900"
 var workersUrl = "tcp://localhost:40901"
+var schedulerUrl = "tcp://localhost:40902"
 
 func receiveWorkloads() {
 	var sock mangos.Socket
@@ -89,6 +98,15 @@ func receiveWorkloads() {
 		}
 		instertWorkload(workload)
 		fmt.Println(Workloads)
+
+		fmt.Println("im here")
+		job := checkForWork(workload)
+		jobStr, err := json.Marshal(job)
+		if err != nil {
+			die("cannot parse job to json string: %s", err.Error())
+		}
+		pushJob(schedulerUrl, string(jobStr))
+		fmt.Println("im here 2")
 	}
 }
 func receiveImages() {
@@ -171,6 +189,23 @@ func listenWorkers() {
 	}
 }
 
+func pushJob(url string, msg string) {
+	var sock mangos.Socket
+	var err error
+
+	if sock, err = push.NewSocket(); err != nil {
+		die("can't get new push socket: %s", err.Error())
+	}
+	if err = sock.Dial(url); err != nil {
+		die("can't dial on push socket: %s", err.Error())
+	}
+	if err = sock.Send([]byte(msg)); err != nil {
+		die("can't send message on push socket: %s", err.Error())
+	}
+	time.Sleep(time.Second / 10)
+	sock.Close()
+}
+
 // make POST /login endpoint
 func getCredentials(name string) string {
 	psswd := generatePassword(10)
@@ -224,9 +259,23 @@ func basicAuth(username, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
+// sends info for the creation of a job in main.go
+func checkForWork(load Workload) Job {
+	if len(load.Images) < 1 {
+		return Job{}
+	}
+
+	var job Job
+	job.Filter = load.Filter
+	job.ImageId = load.Images[len(load.Images)-1]
+	return job
+}
+
 func Start() {
 	rand.Seed(time.Now().UnixNano())
+	//Jobs := make(chan scheduler.Job)
 	go receiveWorkloads()
 	go receiveImages()
 	go listenWorkers()
+
 }
