@@ -2,19 +2,23 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"strconv"
 
 	pb "github.com/CodersSquad/dc-final/proto"
-	"go.nanomsg.org/mangos"
-	"go.nanomsg.org/mangos/protocol/sub"
 	"google.golang.org/grpc"
 
-	// register transports
+	"go.nanomsg.org/mangos"
+	"go.nanomsg.org/mangos/protocol/req"
+
 	_ "go.nanomsg.org/mangos/transport/all"
+
+	linuxproc "github.com/c9s/goprocinfo/linux"
 )
 
 var (
@@ -32,6 +36,16 @@ var (
 	tags              = ""
 )
 
+// shared structs
+type Worker struct {
+	Name  string `json:"name"`
+	Token string `json:"token"`
+	Cpu   uint64 `json:"cpu"`
+	Id    uint64 `json:"id"`
+}
+
+var WorkerInfo Worker // stores worker name, token and cpu
+
 func die(format string, v ...interface{}) {
 	fmt.Fprintln(os.Stderr, fmt.Sprintf(format, v...))
 	os.Exit(1)
@@ -44,36 +58,65 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func init() {
-	flag.StringVar(&controllerAddress, "controller", "tcp://localhost:40899", "Controller address")
-	flag.StringVar(&workerName, "worker-name", "hard-worker", "Worker Name")
-	flag.StringVar(&tags, "tags", "gpu,superCPU,largeMemory", "Comma-separated worker tags")
+	flag.StringVar(&controllerAddress, "controller",
+		"tcp://localhost:40899", "Controller address")
+	flag.StringVar(&workerName, "worker-name",
+		"hard-worker", "Worker Name")
+	flag.StringVar(&tags, "tags", "gpu,superCPU,largeMemory",
+		"Comma-separated worker tags")
 }
 
-// joinCluster is meant to join the controller message-passing server
+// joinCluster works with controller in a REQREP way. The worker
+// tells the controller that he is up and running (sends name and cpu).
+// The controller returns a token for him to use the api
 func joinCluster() {
 	var sock mangos.Socket
 	var err error
 	var msg []byte
 
-	if sock, err = sub.NewSocket(); err != nil {
-		die("can't get new sub socket: %s", err.Error())
+	// make the request
+	if sock, err = req.NewSocket(); err != nil {
+		die("can't get new req socket: %s", err.Error())
+	}
+	fmt.Println(controllerAddress)
+	if err = sock.Dial(controllerAddress); err != nil {
+		die("can't dial on req socket: %s", err.Error())
+	}
+	stat, err := linuxproc.ReadStat("/proc/stat")
+	if err != nil {
+		fmt.Println("stat read fail")
 	}
 
-	log.Printf("Connecting to controller on: %s", controllerAddress)
-	if err = sock.Dial(controllerAddress); err != nil {
-		die("can't dial on sub socket: %s", err.Error())
-	}
-	// Empty byte array effectively subscribes to everything
-	err = sock.SetOption(mangos.OptionSubscribe, []byte(""))
+	var myInfo Worker
+	myInfo.Name = workerName
+	myInfo.Cpu = stat.CPUStatAll.User
+	infoStr, err := json.Marshal(myInfo)
 	if err != nil {
-		die("cannot subscribe: %s", err.Error())
+		fmt.Println("worker coudn't get his info")
+		return
 	}
-	for {
-		if msg, err = sock.Recv(); err != nil {
-			die("Cannot recv: %s", err.Error())
-		}
-		log.Printf("Message-Passing: Worker(%s): Received %s\n", workerName, string(msg))
+
+	// send worker info to controller
+	if err = sock.Send([]byte(infoStr)); err != nil {
+		die("can't send message on push socket: %s", err.Error())
 	}
+
+	// receive controller response (worker struct with token)
+	if msg, err = sock.Recv(); err != nil {
+		die("can't receive date: %s", err.Error())
+	}
+	var tmp Worker
+	err = json.Unmarshal(msg, &tmp)
+	if err != nil {
+		fmt.Println("[ERROR] worker couldnt parse worker\n" +
+			"bad json sent")
+		return
+	}
+
+	WorkerInfo = tmp
+	fmt.Println("[INFO] worker " + tmp.Name + " has been registered with " +
+		"workers id: " + strconv.FormatUint(tmp.Id, 10))
+	sock.Close()
 }
 
 func getAvailablePort() int {

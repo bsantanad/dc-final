@@ -1,12 +1,18 @@
 package controller
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"net/http"
 	"os"
+	"time"
 
 	"go.nanomsg.org/mangos"
 	"go.nanomsg.org/mangos/protocol/pull"
+	"go.nanomsg.org/mangos/protocol/rep"
 
 	_ "go.nanomsg.org/mangos/transport/all"
 )
@@ -28,15 +34,32 @@ type Image struct {
 	Data       []byte `json:"data"`
 	Size       int    `json:"size"`
 }
+type Worker struct {
+	Name  string `json:"name"`
+	Token string `json:"token"`
+	Cpu   uint64 `json:"cpu"`
+	Id    uint64 `json:"id"`
+}
+
+type LoginResponse struct {
+	Message string `json:"message"`
+	Token   string `json:"token"`
+}
 
 // end shared structs
 
 // fake database
 var Workloads []Workload
 var Images []Image
+var Workers []Worker
 
+// id manager
+var workersIds uint64
+
+var apiUrl = "http://localhost:8080"
 var workloadsUrl = "tcp://localhost:40899"
 var imagesUrl = "tcp://localhost:40900"
+var workersUrl = "tcp://localhost:40901"
 
 func receiveWorkloads() {
 	var sock mangos.Socket
@@ -101,6 +124,75 @@ func receiveImages() {
 	}
 }
 
+func listenWorkers() {
+	// REQREP
+	var sock mangos.Socket
+	var err error
+	var msg []byte
+	if sock, err = rep.NewSocket(); err != nil {
+		die("can't get new rep socket: %s", err)
+	}
+	if err = sock.Listen(workersUrl); err != nil {
+		die("can't listen on rep socket: %s", err.Error())
+	}
+	for {
+		// Could also use sock.RecvMsg to get header
+		msg, err = sock.Recv()
+		if err != nil {
+			die("cannot receive on rep socket: %s", err.Error())
+		}
+		var worker Worker
+		err = json.Unmarshal(msg, &worker)
+		if err != nil {
+			fmt.Println("[ERROR] controller couldnt parse worker\n" +
+				"bad json sent")
+			continue
+		}
+		if worker.Name == "" {
+			fmt.Println("[ERROR] worker is missing info\n")
+			continue
+		}
+		fmt.Println("[INFO] worker: " + worker.Name + " has requested a token")
+		worker.Token = getCredentials(worker.Name)
+		worker.Id = workersIds
+		workersIds++
+
+		Workers = append(Workers, worker)
+
+		workerStr, err := json.Marshal(worker)
+		if err != nil {
+			fmt.Println("[ERROR] worker is missing info\n")
+			continue
+		}
+		err = sock.Send([]byte(workerStr))
+		if err != nil {
+			die("can't send reply: %s", err.Error())
+		}
+	}
+}
+
+// make POST /login endpoint
+func getCredentials(name string) string {
+	psswd := generatePassword(10)
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", apiUrl+"/login", nil)
+	req.Header.Add("Authorization", "Basic "+basicAuth(name, psswd))
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	//jsony := string(bodyText)
+	var login LoginResponse
+	err = json.Unmarshal(bodyText, &login)
+	if err != nil {
+		fmt.Println("[ERROR] controller couldnt parse login response\n")
+		return ""
+	}
+	return login.Token
+}
+
 func die(format string, v ...interface{}) {
 	fmt.Fprintln(os.Stderr, fmt.Sprintf(format, v...))
 	os.Exit(1)
@@ -117,9 +209,24 @@ func instertWorkload(workload Workload) {
 	return
 }
 
+/********* http requests helper *******************/
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func generatePassword(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+
 func Start() {
+	rand.Seed(time.Now().UnixNano())
 	go receiveWorkloads()
-	go receiveImages() //TODO create dir for images and store the image there
-	// every workload received create dir
-	// every image received store in dir
+	go receiveImages()
+	go listenWorkers()
 }
