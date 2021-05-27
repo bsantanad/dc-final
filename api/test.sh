@@ -36,7 +36,7 @@ while test $# -gt 0; do
         curl -H "Content-Type: multipart/form-data" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
              -F "data=@test.png" \
-             -F "workload_id=1" \
+             -F "workload_id=0" \
              -F "type=original" \
              -X POST \
              localhost:8080/images | jq

@@ -101,3 +101,125 @@ var Greeter_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/helloworld.proto",
 }
+
+// FiltersClient is the client API for Filters service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type FiltersClient interface {
+	GrayScale(ctx context.Context, in *FilterRequest, opts ...grpc.CallOption) (*FilterReply, error)
+	Blur(ctx context.Context, in *FilterRequest, opts ...grpc.CallOption) (*FilterReply, error)
+}
+
+type filtersClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewFiltersClient(cc grpc.ClientConnInterface) FiltersClient {
+	return &filtersClient{cc}
+}
+
+func (c *filtersClient) GrayScale(ctx context.Context, in *FilterRequest, opts ...grpc.CallOption) (*FilterReply, error) {
+	out := new(FilterReply)
+	err := c.cc.Invoke(ctx, "/proto.Filters/GrayScale", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *filtersClient) Blur(ctx context.Context, in *FilterRequest, opts ...grpc.CallOption) (*FilterReply, error) {
+	out := new(FilterReply)
+	err := c.cc.Invoke(ctx, "/proto.Filters/Blur", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FiltersServer is the server API for Filters service.
+// All implementations must embed UnimplementedFiltersServer
+// for forward compatibility
+type FiltersServer interface {
+	GrayScale(context.Context, *FilterRequest) (*FilterReply, error)
+	Blur(context.Context, *FilterRequest) (*FilterReply, error)
+	mustEmbedUnimplementedFiltersServer()
+}
+
+// UnimplementedFiltersServer must be embedded to have forward compatible implementations.
+type UnimplementedFiltersServer struct {
+}
+
+func (UnimplementedFiltersServer) GrayScale(context.Context, *FilterRequest) (*FilterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GrayScale not implemented")
+}
+func (UnimplementedFiltersServer) Blur(context.Context, *FilterRequest) (*FilterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Blur not implemented")
+}
+func (UnimplementedFiltersServer) mustEmbedUnimplementedFiltersServer() {}
+
+// UnsafeFiltersServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to FiltersServer will
+// result in compilation errors.
+type UnsafeFiltersServer interface {
+	mustEmbedUnimplementedFiltersServer()
+}
+
+func RegisterFiltersServer(s grpc.ServiceRegistrar, srv FiltersServer) {
+	s.RegisterService(&Filters_ServiceDesc, srv)
+}
+
+func _Filters_GrayScale_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FilterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FiltersServer).GrayScale(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Filters/GrayScale",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FiltersServer).GrayScale(ctx, req.(*FilterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Filters_Blur_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FilterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FiltersServer).Blur(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Filters/Blur",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FiltersServer).Blur(ctx, req.(*FilterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Filters_ServiceDesc is the grpc.ServiceDesc for Filters service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Filters_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.Filters",
+	HandlerType: (*FiltersServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GrayScale",
+			Handler:    _Filters_GrayScale_Handler,
+		},
+		{
+			MethodName: "Blur",
+			Handler:    _Filters_Blur_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/helloworld.proto",
+}
