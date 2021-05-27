@@ -18,7 +18,7 @@ option java_multiple_files = true;
 option java_package = "io.grpc.examples.helloworld";
 option java_outer_classname = "HelloWorldProto";
 
-option go_package = "github.com/CodersSquad/final-dc/proto";
+option go_package = "github.com/bsantanad/final-dc/proto";
 
 package proto;
 
@@ -26,6 +26,19 @@ package proto;
 service Greeter {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+service Filters {
+    rpc GrayScale (FilterRequest) returns (FilterReply) {}
+    rpc Blur (FilterRequest) returns (FilterReply) {}
+}
+
+message FilterRequest {
+    string filter = 1;
+    string id = 2;
+}
+message FilterReply{
+  string message = 1;
 }
 
 // The request message containing the user's name.
