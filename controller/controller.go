@@ -41,6 +41,7 @@ type Worker struct {
 	Token string `json:"token"`
 	Cpu   uint64 `json:"cpu"`
 	Id    uint64 `json:"id"`
+	Url   string `json:"url"`
 }
 
 type LoginResponse struct {
@@ -101,6 +102,7 @@ func receiveWorkloads() {
 
 		fmt.Println("im here")
 		job := checkForWork(workload)
+		job.Workers = Workers
 		jobStr, err := json.Marshal(job)
 		if err != nil {
 			die("cannot parse job to json string: %s", err.Error())
@@ -234,8 +236,13 @@ func die(format string, v ...interface{}) {
 }
 
 func instertWorkload(workload Workload) {
+
+	if len(Workloads) == 0 {
+		Workloads = append(Workloads, workload)
+		return
+	}
 	id := workload.Id
-	if id > uint64(len(Workloads))-1 || id == 0 {
+	if id > uint64(len(Workloads))-1 {
 		Workloads = append(Workloads, workload)
 		return
 	}
