@@ -10,7 +10,7 @@ import (
 	"os"
 	"strconv"
 
-	pb "github.com/CodersSquad/dc-final/proto"
+	pb "github.com/bsantanad/dc-final/proto"
 	"google.golang.org/grpc"
 
 	"go.nanomsg.org/mangos"
@@ -27,7 +27,7 @@ var (
 
 // server is used to implement helloworld.GreeterServer.
 type server struct {
-	pb.UnimplementedGreeterServer
+	pb.UnimplementedFiltersServer
 }
 
 var (
@@ -42,6 +42,7 @@ type Worker struct {
 	Token string `json:"token"`
 	Cpu   uint64 `json:"cpu"`
 	Id    uint64 `json:"id"`
+	Url   string `json:"url"`
 }
 
 var WorkerInfo Worker // stores worker name, token and cpu
@@ -52,9 +53,17 @@ func die(format string, v ...interface{}) {
 }
 
 // SayHello implements helloworld.GreeterServer
-func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	log.Printf("RPC: Received: %v", in.GetName())
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
+func (s *server) GrayScale(ctx context.Context, in *pb.FilterRequest) (*pb.FilterReply, error) {
+	fmt.Println("im in worker")
+	fmt.Println(in.GetFilter())
+	fmt.Println(in.GetId())
+	return &pb.FilterReply{Message: "Hello "}, nil
+}
+func (s *server) Blur(ctx context.Context, in *pb.FilterRequest) (*pb.FilterReply, error) {
+	fmt.Println("im in worker")
+	fmt.Println(in.GetFilter())
+	fmt.Println(in.GetId())
+	return &pb.FilterReply{Message: "Hello "}, nil
 }
 
 func init() {
@@ -69,7 +78,7 @@ func init() {
 // joinCluster works with controller in a REQREP way. The worker
 // tells the controller that he is up and running (sends name and cpu).
 // The controller returns a token for him to use the api
-func joinCluster() {
+func joinCluster(url string) {
 	var sock mangos.Socket
 	var err error
 	var msg []byte
@@ -80,7 +89,7 @@ func joinCluster() {
 	}
 	fmt.Println(controllerAddress)
 	if err = sock.Dial(controllerAddress); err != nil {
-		die("can't dial on req socket: %s", err.Error())
+		die("can't dial on req socket: %s\n%s", err.Error(), controllerAddress)
 	}
 	stat, err := linuxproc.ReadStat("/proc/stat")
 	if err != nil {
@@ -90,6 +99,7 @@ func joinCluster() {
 	var myInfo Worker
 	myInfo.Name = workerName
 	myInfo.Cpu = stat.CPUStatAll.User
+	myInfo.Url = url
 	infoStr, err := json.Marshal(myInfo)
 	if err != nil {
 		fmt.Println("worker coudn't get his info")
@@ -136,18 +146,20 @@ func getAvailablePort() int {
 func main() {
 	flag.Parse()
 
-	// Subscribe to Controller
-	go joinCluster()
-
 	// Setup Worker RPC Server
 	rpcPort := getAvailablePort()
 	log.Printf("Starting RPC Service on localhost:%v", rpcPort)
+
+	// Subscribe to Controller
+	hostname := "localhost:" + strconv.Itoa(rpcPort)
+	go joinCluster(hostname)
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", rpcPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterGreeterServer(s, &server{})
+	pb.RegisterFiltersServer(s, &server{})
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
