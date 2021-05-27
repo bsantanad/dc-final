@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	pb "github.com/bsantanad/dc-final/proto"
+	"github.com/esimov/stackblur-go"
 	"google.golang.org/grpc"
 
 	"go.nanomsg.org/mangos"
@@ -53,13 +54,21 @@ func die(format string, v ...interface{}) {
 }
 
 // SayHello implements helloworld.GreeterServer
-func (s *server) GrayScale(ctx context.Context, in *pb.FilterRequest) (*pb.FilterReply, error) {
-	fmt.Println("im in worker")
+func (s *server) GrayScale(ctx context.Context,
+	in *pb.FilterRequest) (*pb.FilterReply, error) {
+	// get image by id from api
+	ioreader := getImage(in.GetId())
+	// blur it
+	blurImg := blur(ioreader)
+	// post image
+
 	fmt.Println(in.GetFilter())
 	fmt.Println(in.GetId())
 	return &pb.FilterReply{Message: "Hello "}, nil
 }
-func (s *server) Blur(ctx context.Context, in *pb.FilterRequest) (*pb.FilterReply, error) {
+func (s *server) Blur(ctx context.Context,
+	in *pb.FilterRequest) (*pb.FilterReply, error) {
+
 	fmt.Println("im in worker")
 	fmt.Println(in.GetFilter())
 	fmt.Println(in.GetId())
@@ -73,6 +82,45 @@ func init() {
 		"hard-worker", "Worker Name")
 	flag.StringVar(&tags, "tags", "gpu,superCPU,largeMemory",
 		"Comma-separated worker tags")
+}
+
+func blur(img io.Reader) []byte {
+	src, _, err := image.Decode(img)
+	if err != nil {
+		log.Fatal(err)
+	}
+	res := stackblur.Process(src, uint32(5))
+	buf := new(bytes.Buffer)
+	err := jpeg.Encode(buf, res, nil)
+	return buf.Bytes()
+}
+
+func getImage(imageId string) io.Reader {
+	url := WorkerInfo.Url + "/image/" + imageId
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return resp.Body
+}
+
+// FIXME we were trying to post the image how to use form in http
+// Content-Type: multipart/form-data
+func postImage(imageId string) io.Reader {
+	url := WorkerInfo.Url + "/image"
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", url, nil)
+	req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return resp.Body
 }
 
 // joinCluster works with controller in a REQREP way. The worker
