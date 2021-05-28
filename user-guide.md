@@ -20,8 +20,7 @@ if you run into any problems, you can go into each project official page:
 
 [bild](https://github.com/anthonynsimon/bild)
 
-you also neeed grpc
-[grpc](https://grpc.io/docs/languages/go/quickstart/)
+you also need [grpc](https://grpc.io/docs/languages/go/quickstart/)
 
 ## initial setup
 
