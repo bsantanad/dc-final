@@ -231,11 +231,6 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		returnMsg(w, "the form sent is missing workload_id or type")
 		return
 	}
-	if imgType == "filtered" {
-		w.WriteHeader(200)
-		returnMsg(w, "image filtered")
-		return
-	}
 
 	// validate id
 	workloadId, err := strconv.ParseUint(wrkId, 10, 64)
@@ -291,6 +286,12 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		ImageId:    image.Id,
 		Type:       image.Type,
 		Size:       image.Size,
+	}
+	if imgType == "filtered" {
+		w.WriteHeader(200)
+		fmt.Println("the image is filtered")
+		returnMsg(w, "image filtered")
+		return
 	}
 
 	// add image to workload's image array
@@ -409,7 +410,6 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 
 func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[INFO]: POST /workloads requested")
-
 	// handle token
 	tmp := r.Header.Get("Authorization")
 	if strings.Fields(tmp)[0] != "Bearer" {
