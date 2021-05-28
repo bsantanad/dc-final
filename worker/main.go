@@ -1,17 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	pb "github.com/bsantanad/dc-final/proto"
-	"github.com/esimov/stackblur-go"
+	"github.com/anthonynsimon/bild/blur"
+	"github.com/anthonynsimon/bild/imgio"
 	"google.golang.org/grpc"
 
 	"go.nanomsg.org/mangos"
@@ -44,6 +51,7 @@ type Worker struct {
 	Cpu   uint64 `json:"cpu"`
 	Id    uint64 `json:"id"`
 	Url   string `json:"url"`
+	Api   string `json:"api"`
 }
 
 var WorkerInfo Worker // stores worker name, token and cpu
@@ -56,15 +64,25 @@ func die(format string, v ...interface{}) {
 // SayHello implements helloworld.GreeterServer
 func (s *server) GrayScale(ctx context.Context,
 	in *pb.FilterRequest) (*pb.FilterReply, error) {
+	fmt.Println("im in grayscale request grpc worker")
 	// get image by id from api
-	ioreader := getImage(in.GetId())
+	fmt.Println("im before get image in worker")
+	imageName := getImage(in.GetId())
+	if len(imageName) == 0 {
+		return &pb.FilterReply{Message: "bad image"}, nil
+	}
 	// blur it
-	blurImg := blur(ioreader)
+	fmt.Println("im before blur image in worker")
+	blury(imageName)
 	// post image
+	fmt.Println("im before post image in worker")
+	postImage(imageName)
+	//fmt.Println(len(bytesImg))
+	//postImage(blurImg)
 
 	fmt.Println(in.GetFilter())
 	fmt.Println(in.GetId())
-	return &pb.FilterReply{Message: "Hello "}, nil
+	return &pb.FilterReply{Message: "hello "}, nil
 }
 func (s *server) Blur(ctx context.Context,
 	in *pb.FilterRequest) (*pb.FilterReply, error) {
@@ -84,43 +102,165 @@ func init() {
 		"Comma-separated worker tags")
 }
 
-func blur(img io.Reader) []byte {
-	src, _, err := image.Decode(img)
+func blury(name string) {
+	//img, err := os.Open(name)
+	//defer img.Close()
+	img, err := imgio.Open(name)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
-	res := stackblur.Process(src, uint32(5))
-	buf := new(bytes.Buffer)
-	err := jpeg.Encode(buf, res, nil)
-	return buf.Bytes()
+
+	result := blur.Gaussian(img, 10.0)
+
+	if err := imgio.Save(name,
+		result, imgio.PNGEncoder()); err != nil {
+		fmt.Println(err)
+		return
+	}
+	/*
+			src, _, err := image.Decode(img)
+			if err != nil {
+		        fmt.Println("error in decode")
+				log.Fatal(err)
+			}
+			res, err := stackblur.Run(src, uint32(5))
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf := new(bytes.Buffer)
+			err = jpeg.Encode(buf, res, nil)
+			return buf.Bytes()
+	*/
 }
 
-func getImage(imageId string) io.Reader {
-	url := WorkerInfo.Url + "/image/" + imageId
+func getImage(imageId string) string {
+	url := WorkerInfo.Api + "/images/" + imageId
+	fmt.Println(url)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return ""
 	}
-	return resp.Body
+	if resp.StatusCode != 200 {
+		fmt.Println("bad status: %s", resp.Status)
+		body, _ := ioutil.ReadAll(resp.Body)
+		fmt.Println(body)
+		return ""
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	fmt.Println("im at the end of get IMAGE")
+
+	// download image
+	permissions := 0775
+	name := "tmp_image" + imageId
+	err = ioutil.WriteFile(name, body, os.FileMode(permissions))
+	if err != nil {
+		fmt.Println(err.Error())
+		return ""
+	}
+	return name
 }
 
 // FIXME we were trying to post the image how to use form in http
 // Content-Type: multipart/form-data
-func postImage(imageId string) io.Reader {
-	url := WorkerInfo.Url + "/image"
+func postImage(name string) {
+	url := WorkerInfo.Api + "/images"
+	fmt.Println(url + "HOLA")
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", url, nil)
-	req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return nil
+	//prepare the reader instances to encode
+	values := map[string]io.Reader{
+		"data": mustOpen(name), // lets assume its this file
+		"type": strings.NewReader("filtered"),
 	}
-	return resp.Body
+	err := Upload(client, url, values)
+	if err != nil {
+		panic(err)
+	}
+	/*
+		req, err := http.NewRequest("POST", url, nil)
+		req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		return resp.Body
+	*/
+}
+
+func mustOpen(f string) *os.File {
+	r, err := os.Open(f)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+// https://stackoverflow.com/a/20397167
+func Upload(client *http.Client, url string,
+	values map[string]io.Reader) (err error) {
+
+	// Prepare a form that you will submit to that URL.
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	for key, r := range values {
+		var fw io.Writer
+		if x, ok := r.(io.Closer); ok {
+			defer x.Close()
+		}
+		// Add an image file
+		if x, ok := r.(*os.File); ok {
+			if fw, err = w.CreateFormFile(key, x.Name()); err != nil {
+				return
+			}
+		} else {
+			// Add other fields
+			if fw, err = w.CreateFormField(key); err != nil {
+				return
+			}
+		}
+		if _, err = io.Copy(fw, r); err != nil {
+			return err
+		}
+
+	}
+	// Don't forget to close the multipart writer.
+	// If you don't close it, your request will be missing the terminating boundary.
+	w.Close()
+
+	fmt.Println("im here ben 1")
+	// Now that you have a form, you can submit it to your handler.
+	req, err := http.NewRequest("POST", url, &b)
+	if err != nil {
+		return
+	}
+	// Don't forget to set the content type, this will contain the boundary.
+	req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	fmt.Println("im here ben 2")
+	// Submit the request
+	res, err := client.Do(req)
+	if err != nil {
+		return
+	}
+
+	fmt.Println("im here ben 3")
+	// Check the response
+	if res.StatusCode != http.StatusOK {
+		err = fmt.Errorf("bad status: %s", res.Status)
+	}
+	fmt.Println("im here ben")
+	fmt.Println(res.StatusCode)
+	return
 }
 
 // joinCluster works with controller in a REQREP way. The worker
