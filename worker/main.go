@@ -111,7 +111,7 @@ func blury(name string) {
 
 func getImage(imageId string) string {
 	url := WorkerInfo.Api + "/images/" + imageId
-	fmt.Println(url)
+	//fmt.Println(url)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
