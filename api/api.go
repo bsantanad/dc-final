@@ -30,14 +30,6 @@ type LoginResponse struct {
 	Token   string `json:"token"`
 }
 
-/*
-type Image struct {
-	Name string `json:"name"`
-	Size int    `json:"size"`
-	Data []byte `json:"data"`
-}
-*/
-
 type Image struct {
 	WorkloadId uint64 `json:"workload_id"`
 	Id         uint64 `json:"image_id"`
@@ -97,7 +89,6 @@ var imagesIds uint64
 
 /***************** send msg via pipeline ****/
 var workloadsUrl = "tcp://localhost:40899"
-var imagesUrl = "tcp://localhost:40900"
 
 func pushMsg(url string, msg string) {
 	var sock mangos.Socket
@@ -263,17 +254,6 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	image.Size = len(image.Data)
 
 	Users[index].Images = append(user.Images, image)
-
-	// transform to string
-	imgStr, err := json.Marshal(image)
-	if err != nil {
-		w.WriteHeader(500)
-		returnMsg(w, "server internal error, "+
-			"couldnt marshal json")
-		return
-	}
-	// push image to controller
-	pushMsg(imagesUrl, string(imgStr))
 
 	// add image to fake db
 	Images = append(Images, image)

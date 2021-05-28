@@ -60,7 +60,6 @@ type Job struct {
 
 // fake database
 var Workloads []Workload
-var Images []Image
 var Workers []Worker
 
 // id manager
@@ -68,7 +67,6 @@ var workersIds uint64
 
 var apiUrl = "http://localhost:8080"
 var workloadsUrl = "tcp://localhost:40899"
-var imagesUrl = "tcp://localhost:40900"
 var workersUrl = "tcp://localhost:40901"
 var schedulerUrl = "tcp://localhost:40902"
 
@@ -109,39 +107,6 @@ func receiveWorkloads() {
 		pushJob(schedulerUrl, string(jobStr))
 	}
 }
-func receiveImages() {
-	var sock mangos.Socket
-	var err error
-	var msg []byte
-
-	if sock, err = pull.NewSocket(); err != nil {
-		die("can't get new pull socket: %s", err)
-	}
-	if err = sock.Listen(imagesUrl); err != nil {
-		die("can't listen on pull socket: %s", err.Error())
-	}
-	for {
-		// Could also use sock.RecvMsg to get header
-		msg, err = sock.Recv()
-		if err != nil {
-			die("cannot receive from mangos Socket: %s", err.Error())
-		}
-
-		// after getting json string, convert it to workload struct
-		// and add it to the fake database
-		var image Image
-		err = json.Unmarshal(msg, &image)
-		if err != nil {
-			fmt.Println("[ERROR] controller couldnt parse to image\n" +
-				"bad json sent")
-		}
-
-		// add image to fake db
-		Images = append(Images, image)
-		//fmt.Println(Images)
-	}
-}
-
 func listenWorkers() {
 	// REQREP
 	var sock mangos.Socket
@@ -281,7 +246,6 @@ func Start() {
 	rand.Seed(time.Now().UnixNano())
 	//Jobs := make(chan scheduler.Job)
 	go receiveWorkloads()
-	go receiveImages()
 	go listenWorkers()
 
 }
