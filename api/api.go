@@ -226,12 +226,17 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	// validate workloads id
 	wrkId := r.FormValue("workload_id")
 	imgType := r.FormValue("type")
-	if wrkId == "" ||
-		imgType == "" {
+	if imgType == "" {
 		w.WriteHeader(400)
 		returnMsg(w, "the form sent is missing workload_id or type")
 		return
 	}
+	if imgType == "filtered" {
+		w.WriteHeader(200)
+		returnMsg(w, "image filtered")
+		return
+	}
+
 	// validate id
 	workloadId, err := strconv.ParseUint(wrkId, 10, 64)
 	if workloadId >= workloadsIds || workloadsIds == 0 {
@@ -265,20 +270,6 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 
 	Users[index].Images = append(user.Images, image)
 
-	// add image to workload's image array
-	Workloads[workloadId].Images = append(Workloads[workloadId].Images,
-		image.Id)
-	workload := Workloads[workloadId]
-	// transform to string
-	wrkStr, err := json.Marshal(workload)
-	if err != nil {
-		w.WriteHeader(500)
-		returnMsg(w, "server internal error, "+
-			"couldnt marshal json")
-		return
-	}
-	pushMsg(workloadsUrl, string(wrkStr))
-
 	// transform to string
 	imgStr, err := json.Marshal(image)
 	if err != nil {
@@ -302,12 +293,29 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		Size:       image.Size,
 	}
 
+	// add image to workload's image array
+	Workloads[workloadId].Images = append(Workloads[workloadId].Images,
+		image.Id)
+	workload := Workloads[workloadId]
+	// transform to string
+	wrkStr, err := json.Marshal(workload)
+	if err != nil {
+		w.WriteHeader(500)
+		returnMsg(w, "server internal error, "+
+			"couldnt marshal json")
+		return
+	}
+	fmt.Println("im before sending new workloads to controller")
+	pushMsg(workloadsUrl, string(wrkStr))
+
 	buf.Reset()
+	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(msg)
 }
 
 func getImages(w http.ResponseWriter, r *http.Request) {
 	// handle token
+	fmt.Println("[INFO]: GET /images/ requested")
 	tmp := r.Header.Get("Authorization")
 	if strings.Fields(tmp)[0] != "Bearer" {
 		w.WriteHeader(400)

@@ -48,7 +48,7 @@ while test $# -gt 0; do
         curl -H "Content-Type: application/json" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
             -X GET \
-            localhost:8080/images/2 \
+            localhost:8080/images/1 \
             --output file.png
             logout_jose
         shift
