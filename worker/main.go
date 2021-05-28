@@ -72,17 +72,21 @@ func (s *server) GrayScale(ctx context.Context,
 		return &pb.FilterReply{Message: "bad image"}, nil
 	}
 	// blur it
+	var msg string
 	if in.GetFilter() == "blur" {
 		blury(imageName)
+		msg = "[INFO] image " + in.GetId() + " has been blured"
+		fmt.Println("[INFO] I just blured an image")
 	}
 	if in.GetFilter() == "grayscale" {
 		grayscaly(imageName)
+		msg = "[INFO] image " + in.GetId() + " has been grayscaled"
+		fmt.Println("[INFO] I just grayscaled an image")
 	}
 	// post image
 	postImage(imageName)
 
-	fmt.Println(in.GetFilter())
-	return &pb.FilterReply{Message: "hello "}, nil
+	return &pb.FilterReply{Message: msg}, nil
 }
 func (s *server) Blur(ctx context.Context,
 	in *pb.FilterRequest) (*pb.FilterReply, error) {
