@@ -77,6 +77,13 @@ type Workload struct {
 	Images      []uint64 `json:"filtered_images"`
 }
 
+type ImageResp struct {
+	WorkloadId uint64 `json:"workload_id"`
+	Id         uint64 `json:"image_id"`
+	Type       string `json:"type"`
+	Size       int    `json:"size"`
+}
+
 type ImageReq struct {
 	WorkloadId string `json:"workload_id"`
 }
@@ -313,10 +320,18 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 	// read path params
 	vars := mux.Vars(r)
 	id := vars["image_id"]
+	// if they dont send any id, we return all the images info
 	if id == "" {
-		w.WriteHeader(400)
-		returnMsg(w, "id missing, "+
-			"you should do smthg like images/{image_id}")
+		var imagesResp []ImageResp
+		for _, image := range Images {
+			var tmp ImageResp
+			tmp.WorkloadId = image.WorkloadId
+			tmp.Id = image.Id
+			tmp.Type = image.Type
+			tmp.Size = image.Size
+			imagesResp = append(imagesResp, tmp)
+		}
+		json.NewEncoder(w).Encode(imagesResp)
 		return
 	}
 	fmt.Println("[INFO]: GET /images/" + id + " requested")

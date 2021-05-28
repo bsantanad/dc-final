@@ -36,11 +36,21 @@ while test $# -gt 0; do
         curl -H "Content-Type: multipart/form-data" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
              -F "data=@test.png" \
-             -F "workload_id=0" \
+             -F "workload_id=2" \
              -F "type=original" \
              -X POST \
              localhost:8080/images | jq
         logout_jose
+        shift
+        ;;
+    --get-image)
+        login_jose
+        curl -H "Content-Type: application/json" \
+             -H "Authorization: Bearer am9zZTptYXJpYQ==" \
+            -X GET \
+            localhost:8080/images/1 \
+            --output file.png
+            logout_jose
         shift
         ;;
     --get-images)
@@ -48,8 +58,7 @@ while test $# -gt 0; do
         curl -H "Content-Type: application/json" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
             -X GET \
-            localhost:8080/images/1 \
-            --output file.png
+            localhost:8080/images | jq
             logout_jose
         shift
         ;;
