@@ -242,7 +242,6 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// validate type
-	fmt.Println(imgType)
 	if imgType != "original" && imgType != "filtered" {
 		w.WriteHeader(400)
 		returnMsg(w, "the type sent isnt valid, "+
@@ -289,7 +288,6 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	}
 	if imgType == "filtered" {
 		w.WriteHeader(200)
-		fmt.Println("the image is filtered")
 		returnMsg(w, "image filtered")
 		return
 	}
@@ -306,7 +304,6 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 			"couldnt marshal json")
 		return
 	}
-	fmt.Println("im before sending new workloads to controller")
 	pushMsg(workloadsUrl, string(wrkStr))
 
 	buf.Reset()
@@ -326,7 +323,6 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
 	_, _, exists := searchToken(token)
-	//fmt.Println(user)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+
@@ -420,7 +416,6 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
 	_, _, exists := searchToken(token)
-	//fmt.Println(user)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+
@@ -480,8 +475,7 @@ func getWorkloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := strings.Fields(tmp)[1] // get the token from header
-	_, user, exists := searchToken(token)
-	fmt.Println(user)
+	_, _, exists := searchToken(token)
 	if !exists {
 		w.WriteHeader(400)
 		returnMsg(w, "token not found, "+

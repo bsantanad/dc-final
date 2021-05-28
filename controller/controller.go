@@ -77,7 +77,6 @@ func receiveWorkloads() {
 	var err error
 	var msg []byte
 
-	fmt.Println("im in the contrller")
 	if sock, err = pull.NewSocket(); err != nil {
 		die("can't get new pull socket: %s", err)
 	}
@@ -100,18 +99,14 @@ func receiveWorkloads() {
 				"bad json sent")
 		}
 		instertWorkload(workload)
-		fmt.Println(Workloads)
 
-		fmt.Println("im here")
 		job := checkForWork(workload)
 		job.Workers = Workers
 		jobStr, err := json.Marshal(job)
 		if err != nil {
 			die("cannot parse job to json string: %s", err.Error())
 		}
-		fmt.Println("im before sending job to scheduler")
 		pushJob(schedulerUrl, string(jobStr))
-		fmt.Println("im here 2")
 	}
 }
 func receiveImages() {

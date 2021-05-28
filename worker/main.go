@@ -64,32 +64,21 @@ func die(format string, v ...interface{}) {
 // SayHello implements helloworld.GreeterServer
 func (s *server) GrayScale(ctx context.Context,
 	in *pb.FilterRequest) (*pb.FilterReply, error) {
-	fmt.Println("im in grayscale request grpc worker")
 	// get image by id from api
-	fmt.Println("im before get image in worker")
 	imageName := getImage(in.GetId())
 	if len(imageName) == 0 {
 		return &pb.FilterReply{Message: "bad image"}, nil
 	}
 	// blur it
-	fmt.Println("im before blur image in worker")
 	blury(imageName)
 	// post image
-	fmt.Println("im before post image in worker")
 	postImage(imageName)
-	//fmt.Println(len(bytesImg))
-	//postImage(blurImg)
 
 	fmt.Println(in.GetFilter())
-	fmt.Println(in.GetId())
 	return &pb.FilterReply{Message: "hello "}, nil
 }
 func (s *server) Blur(ctx context.Context,
 	in *pb.FilterRequest) (*pb.FilterReply, error) {
-
-	fmt.Println("im in worker")
-	fmt.Println(in.GetFilter())
-	fmt.Println(in.GetId())
 	return &pb.FilterReply{Message: "Hello "}, nil
 }
 
@@ -118,20 +107,6 @@ func blury(name string) {
 		fmt.Println(err)
 		return
 	}
-	/*
-			src, _, err := image.Decode(img)
-			if err != nil {
-		        fmt.Println("error in decode")
-				log.Fatal(err)
-			}
-			res, err := stackblur.Run(src, uint32(5))
-			if err != nil {
-				log.Fatal(err)
-			}
-			buf := new(bytes.Buffer)
-			err = jpeg.Encode(buf, res, nil)
-			return buf.Bytes()
-	*/
 }
 
 func getImage(imageId string) string {
@@ -147,8 +122,6 @@ func getImage(imageId string) string {
 	}
 	if resp.StatusCode != 200 {
 		fmt.Println("bad status: %s", resp.Status)
-		body, _ := ioutil.ReadAll(resp.Body)
-		fmt.Println(body)
 		return ""
 	}
 	body, err := ioutil.ReadAll(resp.Body)
@@ -156,7 +129,6 @@ func getImage(imageId string) string {
 		fmt.Println(err)
 		return ""
 	}
-	fmt.Println("im at the end of get IMAGE")
 
 	// download image
 	permissions := 0775
@@ -169,11 +141,8 @@ func getImage(imageId string) string {
 	return name
 }
 
-// FIXME we were trying to post the image how to use form in http
-// Content-Type: multipart/form-data
 func postImage(name string) {
 	url := WorkerInfo.Api + "/images"
-	fmt.Println(url + "HOLA")
 	client := &http.Client{}
 	//prepare the reader instances to encode
 	values := map[string]io.Reader{
@@ -184,16 +153,6 @@ func postImage(name string) {
 	if err != nil {
 		panic(err)
 	}
-	/*
-		req, err := http.NewRequest("POST", url, nil)
-		req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
-		resp, err := client.Do(req)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		return resp.Body
-	*/
 }
 
 func mustOpen(f string) *os.File {
@@ -204,7 +163,7 @@ func mustOpen(f string) *os.File {
 	return r
 }
 
-// https://stackoverflow.com/a/20397167
+// code from https://stackoverflow.com/a/20397167
 func Upload(client *http.Client, url string,
 	values map[string]io.Reader) (err error) {
 
@@ -236,7 +195,6 @@ func Upload(client *http.Client, url string,
 	// If you don't close it, your request will be missing the terminating boundary.
 	w.Close()
 
-	fmt.Println("im here ben 1")
 	// Now that you have a form, you can submit it to your handler.
 	req, err := http.NewRequest("POST", url, &b)
 	if err != nil {
@@ -246,20 +204,16 @@ func Upload(client *http.Client, url string,
 	req.Header.Add("Authorization", "Bearer "+WorkerInfo.Token)
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
-	fmt.Println("im here ben 2")
 	// Submit the request
 	res, err := client.Do(req)
 	if err != nil {
 		return
 	}
 
-	fmt.Println("im here ben 3")
 	// Check the response
 	if res.StatusCode != http.StatusOK {
 		err = fmt.Errorf("bad status: %s", res.Status)
 	}
-	fmt.Println("im here ben")
-	fmt.Println(res.StatusCode)
 	return
 }
 
