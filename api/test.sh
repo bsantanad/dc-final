@@ -27,7 +27,7 @@ while test $# -gt 0; do
         curl -H "Content-Type: application/json" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
             -X GET \
-            localhost:8080/workloads/2 | jq
+            localhost:8080/workloads/1 | jq
         logout_jose
         shift
         ;;
