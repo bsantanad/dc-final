@@ -36,6 +36,7 @@ type Worker struct {
 	Cpu   uint64 `json:"cpu"`
 	Id    uint64 `json:"id"`
 	Url   string `json:"url"`
+	Api   string `json:"api"`
 }
 
 type Job struct {
@@ -46,7 +47,7 @@ type Job struct {
 
 func schedule(job Job) {
 
-	fmt.Println("im in jobs")
+	fmt.Println("im entered job to scheduler")
 	fmt.Println(job)
 	if job.Filter == "" {
 		return
@@ -61,6 +62,7 @@ func schedule(job Job) {
 	filter := job.Filter
 	imageId := strconv.FormatUint(job.ImageId, 10)
 
+	fmt.Println("im bfore dial to grpc in job to scheduler")
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(url, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
@@ -71,6 +73,7 @@ func schedule(job Job) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	fmt.Println("im bfore grayscale request grpc in job to scheduler")
 	r, err := c.GrayScale(ctx, &pb.FilterRequest{Filter: filter, Id: imageId})
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
