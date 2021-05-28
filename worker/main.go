@@ -17,9 +17,11 @@ import (
 	"strings"
 
 	pb "github.com/bsantanad/dc-final/proto"
-	"github.com/anthonynsimon/bild/blur"
-	"github.com/anthonynsimon/bild/imgio"
 	"google.golang.org/grpc"
+
+	"github.com/anthonynsimon/bild/blur"
+	"github.com/anthonynsimon/bild/effect"
+	"github.com/anthonynsimon/bild/imgio"
 
 	"go.nanomsg.org/mangos"
 	"go.nanomsg.org/mangos/protocol/req"
@@ -70,7 +72,12 @@ func (s *server) GrayScale(ctx context.Context,
 		return &pb.FilterReply{Message: "bad image"}, nil
 	}
 	// blur it
-	blury(imageName)
+	if in.GetFilter() == "blur" {
+		blury(imageName)
+	}
+	if in.GetFilter() == "grayscale" {
+		grayscaly(imageName)
+	}
 	// post image
 	postImage(imageName)
 
@@ -92,8 +99,6 @@ func init() {
 }
 
 func blury(name string) {
-	//img, err := os.Open(name)
-	//defer img.Close()
 	img, err := imgio.Open(name)
 	if err != nil {
 		fmt.Println(err)
@@ -107,6 +112,22 @@ func blury(name string) {
 		fmt.Println(err)
 		return
 	}
+}
+func grayscaly(name string) {
+	img, err := imgio.Open(name)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result := effect.Grayscale(img)
+
+	if err := imgio.Save(name,
+		result, imgio.PNGEncoder()); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 }
 
 func getImage(imageId string) string {
@@ -152,6 +173,10 @@ func postImage(name string) {
 	err := Upload(client, url, values)
 	if err != nil {
 		panic(err)
+	}
+	e := os.Remove(name)
+	if e != nil {
+		fmt.Println("[WARN] couldnt delete tmp file")
 	}
 }
 
