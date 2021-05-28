@@ -42,6 +42,7 @@ type Worker struct {
 	Cpu   uint64 `json:"cpu"`
 	Id    uint64 `json:"id"`
 	Url   string `json:"url"`
+	Api   string `json:"api"`
 }
 
 type LoginResponse struct {
@@ -76,6 +77,7 @@ func receiveWorkloads() {
 	var err error
 	var msg []byte
 
+	fmt.Println("im in the contrller")
 	if sock, err = pull.NewSocket(); err != nil {
 		die("can't get new pull socket: %s", err)
 	}
@@ -107,6 +109,7 @@ func receiveWorkloads() {
 		if err != nil {
 			die("cannot parse job to json string: %s", err.Error())
 		}
+		fmt.Println("im before sending job to scheduler")
 		pushJob(schedulerUrl, string(jobStr))
 		fmt.Println("im here 2")
 	}
@@ -175,6 +178,7 @@ func listenWorkers() {
 		fmt.Println("[INFO] worker: " + worker.Name + " has requested a token")
 		worker.Token = getCredentials(worker.Name)
 		worker.Id = workersIds
+		worker.Api = apiUrl
 		workersIds++
 
 		Workers = append(Workers, worker)
