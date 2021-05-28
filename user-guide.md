@@ -114,6 +114,7 @@ _note:_ the workload name can be whatever
 #### get info on workload
 
 `/workloads/{workload_id}` **GET**
+
 you can get all the info on a workload by using a GET
 
 ```bash
