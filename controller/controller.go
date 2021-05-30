@@ -121,18 +121,26 @@ func listenWorkers() {
 	for {
 		// Could also use sock.RecvMsg to get header
 		msg, err = sock.Recv()
+
 		if err != nil {
 			die("cannot receive on rep socket: %s", err.Error())
 		}
 		var worker Worker
 		err = json.Unmarshal(msg, &worker)
+		// update cpu usage
+		if worker.Name == "" {
+			fmt.Println("[INFO] updating cpu usage\n")
+			Workers[worker.Id].Cpu = worker.Cpu
+			err = sock.Send([]byte("cpu_cool"))
+			if err != nil {
+				die("can't send reply: %s", err.Error())
+			}
+			continue
+		}
+
 		if err != nil {
 			fmt.Println("[ERROR] controller couldnt parse worker\n" +
 				"bad json sent")
-			continue
-		}
-		if worker.Name == "" {
-			fmt.Println("[ERROR] worker is missing info\n")
 			continue
 		}
 		fmt.Println("[INFO] worker: " + worker.Name + " has requested a token")
