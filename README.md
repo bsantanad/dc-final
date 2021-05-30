@@ -95,10 +95,7 @@ go run main.go --controller <host>:<port> --worker-name <worker_name> --tags <ta
 Test Cases (from console)
 -------------------------
 
-**IMPORTANT**
-This section will be updated soon, expect updates about the full system test suite.
-
-- A [script](https://floobits.com/obedmr/dc-labs/file/final/stress_test.py) is provided to do an intensive end-to-end testing
+- Consider the the test automation in [`tests/`](./tests/) directory. This is not a must to run in your side, but at least you can see the steps to test your system and this steps would be the ones that professor would be using to test your system
 
 "Game" Rules
 ------------
