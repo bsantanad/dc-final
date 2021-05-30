@@ -18,6 +18,7 @@ import argparse
 import glob
 import os
 import requests
+import json
 
 WORKLOADS_API_ENDPOINT='http://localhost:8080/workloads'
 IMAGES_API_ENDPOINT='http://localhost:8080/images'
@@ -45,6 +46,8 @@ def push_images(frames_path, workload_id, token):
         r = requests.post(IMAGES_API_ENDPOINT, files=files, headers=headers, data=data)
         print(IMAGES_API_ENDPOINT, data)
         print(r.status_code)
+        print(r.text)
+
 
 
 # pull_images pulls results images
@@ -69,6 +72,25 @@ def pull_images(frames_path, workload_id, image_type, token):
         if r.status_code == 200:
             open(image_path, 'wb').write(r.content)
 
+def pull_filtered(frames_path, workload_id, image_type, token):
+    if not os.path.isdir(frames_path):
+        os.mkdir(frames_path)
+
+    headers= {'Authorization': 'Bearer {}'.format(token)}
+    images_url = '{}'.format(IMAGES_API_ENDPOINT)
+    r = requests.get(images_url, headers=headers)
+    images_info = json.loads(r.text)
+
+    for images in images_info:
+        if images['type'] == 'filtered':
+            images_url = '{}/{}'.format(IMAGES_API_ENDPOINT, \
+                                            images['image_id'])
+            image_path = '{}/{}.png'.format(frames_path, images['image_id'])
+            print(images_url)
+            r = requests.get(images_url, allow_redirects=True, headers=headers)
+            if r.status_code == 200:
+                open(image_path, 'wb').write(r.content)
+
 
 
 if __name__ == '__main__':
@@ -84,4 +106,5 @@ if __name__ == '__main__':
     if args.action == 'push':
         push_images(args.frames_path, args.workload_id, args.token)
     elif args.action == 'pull':
-        pull_images(args.frames_path, args.workload_id, args.image_type, args.token)
+        #pull_images(args.frames_path, args.workload_id, args.image_type, args.token)
+        pull_filtered(args.frames_path, args.workload_id, args.image_type, args.token)
