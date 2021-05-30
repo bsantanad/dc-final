@@ -86,6 +86,9 @@ func (s *server) GrayScale(ctx context.Context,
 	// post image
 	postImage(imageName)
 
+	// update cpu usage
+	updateCPU()
+
 	return &pb.FilterReply{Message: msg}, nil
 }
 func (s *server) Blur(ctx context.Context,
@@ -298,6 +301,57 @@ func joinCluster(url string) {
 	fmt.Println("[INFO] worker " + tmp.Name + " has been registered with " +
 		"workers id: " + strconv.FormatUint(tmp.Id, 10))
 	sock.Close()
+}
+
+func updateCPU() {
+	var sock mangos.Socket
+	var err error
+	var msg []byte
+
+	if sock, err = req.NewSocket(); err != nil {
+		die("can't get new req socket: %s", err.Error())
+	}
+	//fmt.Println(controllerAddress)
+	if err = sock.Dial(controllerAddress); err != nil {
+		die("can't dial on req socket: %s\n%s", err.Error(), controllerAddress)
+	}
+
+	stat, err := linuxproc.ReadStat("/proc/stat")
+	if err != nil {
+		fmt.Println("stat read fail")
+	}
+
+	var tmp Worker
+	tmp.Cpu = stat.CPUStatAll.User
+	tmp.Id = WorkerInfo.Id
+
+	tmpStr, err := json.Marshal(tmp)
+	if err != nil {
+		fmt.Println("worker coudn't get his info")
+		return
+	}
+
+	// send worker info to controller
+	if err = sock.Send([]byte(tmpStr)); err != nil {
+		die("can't send message on push socket: %s", err.Error())
+	}
+
+	// receive controller response (worker struct with token)
+	if msg, err = sock.Recv(); err != nil {
+		die("can't receive date: %s", err.Error())
+	}
+	if string(msg) == "cpu_cool" {
+		fmt.Println("[INFO] cpu has been updated " +
+			"workers cpu: " + strconv.FormatUint(tmp.Cpu, 10))
+	}
+	if err != nil {
+		fmt.Println("[ERROR] worker couldnt update cpu\n" +
+			"bad json sent")
+		return
+	}
+
+	sock.Close()
+
 }
 
 func getAvailablePort() int {
