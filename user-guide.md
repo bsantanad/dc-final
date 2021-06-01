@@ -27,7 +27,6 @@ you also need [grpc](https://grpc.io/docs/languages/go/quickstart/)
 So running the whole system is quite simple, first lets look at the arch
 ![architecure](images/arch-dist.png)
 
-here you can see the communication protocols that are used across the system
 
 here you can see the communication protocols that are used across the system
 
