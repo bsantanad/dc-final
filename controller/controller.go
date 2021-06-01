@@ -70,6 +70,10 @@ var workloadsUrl = "tcp://localhost:40899"
 var workersUrl = "tcp://localhost:40901"
 var schedulerUrl = "tcp://localhost:40902"
 
+// PIPELINE listen for workloads sent by either
+// postWorkloads or postImages, if the workload
+// has jobs, push them to via PIPELINE to the
+// scheduler
 func receiveWorkloads() {
 	var sock mangos.Socket
 	var err error
@@ -107,6 +111,11 @@ func receiveWorkloads() {
 		pushJob(schedulerUrl, string(jobStr))
 	}
 }
+
+// counter part to joinCluster in worker/main.go, receive new
+// workers and register them against the api, this creates a
+// token. It also gives them an id. Then return this info to
+// the worker (in order for him to use it)
 func listenWorkers() {
 	// REQREP
 	var sock mangos.Socket
@@ -163,6 +172,7 @@ func listenWorkers() {
 	}
 }
 
+// send job via PIPELINE to the scheduler
 func pushJob(url string, msg string) {
 	var sock mangos.Socket
 	var err error
@@ -180,7 +190,7 @@ func pushJob(url string, msg string) {
 	sock.Close()
 }
 
-// make POST /login endpoint
+// make request POST /login endpoint
 func getCredentials(name string) string {
 	psswd := generatePassword(10)
 	client := &http.Client{}
@@ -207,6 +217,7 @@ func die(format string, v ...interface{}) {
 	os.Exit(1)
 }
 
+// insert or update workloads
 func instertWorkload(workload Workload) {
 
 	if len(Workloads) == 0 {
