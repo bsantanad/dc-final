@@ -191,8 +191,12 @@ func delLogout(w http.ResponseWriter, r *http.Request) {
 // validates it and finds the user.
 // Then creates a buffer, copy the bytes of the image
 // to it and fills the Image struct.
-// Finally it append the image to the Image slice
+// After that it append the image to the Image slice
 // the user has.
+
+// it also send the updated workload information to the
+// controller this way, the controller knows not just
+// the workloads but the images in them aswell
 func postImages(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[INFO]: POST /images requested")
 	tmp := r.Header.Get("Authorization")
@@ -298,6 +302,12 @@ func postImages(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(msg)
 }
 
+// getImages, if function does not receives image id
+// it will return a list of all the images
+// if it does it returns the the image with that ID,
+// it wont return a json, it will return the actual
+// bytes of the images, be sure to use `--output` if you are
+// testing with curl
 func getImages(w http.ResponseWriter, r *http.Request) {
 	// handle token
 	fmt.Println("[INFO]: GET /images/ requested")
@@ -399,6 +409,8 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(status)
 }
 
+// postWorkloads validates token, create a new workload and
+// send it's information to the controller
 func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("[INFO]: POST /workloads requested")
 	// handle token
@@ -459,6 +471,7 @@ func postWorkloads(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(workload)
 }
 
+// getWorkloads, get workloads information by id
 func getWorkloads(w http.ResponseWriter, r *http.Request) {
 
 	// handle token
