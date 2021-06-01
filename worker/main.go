@@ -63,7 +63,8 @@ func die(format string, v ...interface{}) {
 	os.Exit(1)
 }
 
-// SayHello implements helloworld.GreeterServer
+// GrayScale, get image, check filter, filter image, upload image to api
+// updateCpu usage
 func (s *server) GrayScale(ctx context.Context,
 	in *pb.FilterRequest) (*pb.FilterReply, error) {
 	// get image by id from api
@@ -105,6 +106,7 @@ func init() {
 		"Comma-separated worker tags")
 }
 
+// blur image with blid
 func blury(name string) {
 	img, err := imgio.Open(name)
 	if err != nil {
@@ -120,6 +122,8 @@ func blury(name string) {
 		return
 	}
 }
+
+// grayscale image with blid
 func grayscaly(name string) {
 	img, err := imgio.Open(name)
 	if err != nil {
@@ -137,6 +141,7 @@ func grayscaly(name string) {
 
 }
 
+// GET request to api for image
 func getImage(imageId string) string {
 	url := WorkerInfo.Api + "/images/" + imageId
 	//fmt.Println(url)
@@ -169,6 +174,8 @@ func getImage(imageId string) string {
 	return name
 }
 
+// postImage to api
+// code from https://stackoverflow.com/a/20397167
 func postImage(name string) {
 	url := WorkerInfo.Api + "/images"
 	client := &http.Client{}
@@ -303,6 +310,11 @@ func joinCluster(url string) {
 	sock.Close()
 }
 
+// get cpu info and send it to the controller,
+// we can diff this request from the joinCluster one
+// because in one we dont send the name of the worker,
+// just the id, we check this and do the proper
+// thing in the controller
 func updateCPU() {
 	var sock mangos.Socket
 	var err error

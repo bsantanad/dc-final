@@ -18,16 +18,6 @@ import (
 	_ "go.nanomsg.org/mangos/transport/all"
 )
 
-//const (
-//	address     = "localhost:50051"
-//	defaultName = "world"
-//)
-/*
-type Job struct {
-	Address string
-	RPCName string
-}
-*/
 var schedulerUrl = "tcp://localhost:40902"
 
 type Worker struct {
