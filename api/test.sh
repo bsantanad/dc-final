@@ -17,7 +17,7 @@ while test $# -gt 0; do
         curl -H "Content-Type: application/json" \
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
             -X POST \
-            -d '{"filter": "blur", "workload_name": "jose"}' \
+            -d '{"filter": "grayscale", "workload_name": "david"}' \
             localhost:8080/workloads | jq
         logout_jose
         shift
@@ -28,7 +28,6 @@ while test $# -gt 0; do
              -H "Authorization: Bearer am9zZTptYXJpYQ==" \
             -X GET \
             localhost:8080/workloads/1 | jq
-        logout_jose
         shift
         ;;
     --post-images)
